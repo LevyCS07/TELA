@@ -394,12 +394,13 @@
         const debugPanel = document.getElementById('debug-panel');
         const debugContent = document.getElementById('debug-content');
         
-        // Variáveis globales
+        // Variáveis globais
         let map = null;
         let turnosData = {};
         let currentLayers = [];
         let markerCluster = null;
         let colaboradoresData = [];
+        let colaboradoresBounds = null;
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
@@ -483,6 +484,9 @@
             
             // Adicionar controle de camadas
             L.control.scale({metric: true, imperial: false}).addTo(map);
+            
+            // Inicializar bounds para colaboradores
+            colaboradoresBounds = L.latLngBounds();
         }
 
         // Função para listar turnos do GitHub
@@ -597,6 +601,11 @@
                 
                 // Carregar e exibir colaboradores
                 await exibirColaboradoresNoMapa(rota);
+                
+                // Ajustar a visualização do mapa para mostrar todos os colaboradores
+                if (!colaboradoresBounds.isEmpty()) {
+                    map.fitBounds(colaboradoresBounds, { padding: [50, 50] });
+                }
                 
                 mostrarStatus(`Mapa gerado com sucesso: ${rota}`);
             } catch (error) {
@@ -736,6 +745,9 @@
                     zoomToBoundsOnClick: true
                 });
                 
+                // Resetar bounds dos colaboradores
+                colaboradoresBounds = L.latLngBounds();
+                
                 // Adicionar marcadores para cada colaborador
                 colaboradoresFiltrados.forEach(colab => {
                     // Extrair e converter coordenadas (verificando várias possíveis colunas)
@@ -785,6 +797,9 @@
                     
                     marker.bindPopup(popupContent);
                     markerCluster.addLayer(marker);
+                    
+                    // Adicionar coordenadas aos bounds
+                    colaboradoresBounds.extend([lat, lon]);
                 });
                 
                 // Adicionar cluster ao mapa
@@ -813,6 +828,9 @@
                 map.removeLayer(markerCluster);
                 markerCluster = null;
             }
+            
+            // Resetar bounds dos colaboradores
+            colaboradoresBounds = L.latLngBounds();
         }
 
         // Função para mostrar/ocultar loading
