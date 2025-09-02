@@ -489,6 +489,15 @@
             colaboradoresBounds = L.latLngBounds();
         }
 
+        // Função para converter coordenadas com vírgula para formato decimal
+        function converterCoordenada(valor) {
+            if (typeof valor === 'string') {
+                // Substituir vírgula por ponto e converter para número
+                return parseFloat(valor.replace(',', '.'));
+            }
+            return parseFloat(valor);
+        }
+
         // Função para listar turnos do GitHub
         async function listarTurnos() {
             const apiUrl = `https://api.github.com/repos/${USER}/${REPO}/contents`;
@@ -526,7 +535,7 @@
             } catch (error) {
                 console.error('Erro ao listar turnos:', error);
                 mostrarStatus('Erro ao carregar turnos. Verifique o console para detalhes.', 'error');
-                debugLog(`Erro ao carregar turnos: ${error.message}`);
+                debugLog(`Erro ao carregar turnos: ${error.message`);
                 return {};
             }
         }
@@ -605,6 +614,7 @@
                 // Ajustar a visualização do mapa para mostrar todos os colaboradores
                 if (!colaboradoresBounds.isEmpty()) {
                     map.fitBounds(colaboradoresBounds, { padding: [50, 50] });
+                    debugLog(`Mapa ajustado para mostrar colaboradores entre: ${colaboradoresBounds.getSouthWest()} e ${colaboradoresBounds.getNorthEast()}`);
                 }
                 
                 mostrarStatus(`Mapa gerado com sucesso: ${rota}`);
@@ -751,7 +761,8 @@
                 // Adicionar marcadores para cada colaborador
                 colaboradoresFiltrados.forEach(colab => {
                     // Extrair e converter coordenadas (verificando várias possíveis colunas)
-                    const lat = parseFloat(
+                    // Usar a função converterCoordenada para lidar com vírgulas
+                    const lat = converterCoordenada(
                         colab.LAT || 
                         colab.lat || 
                         colab.Latitude || 
@@ -759,7 +770,7 @@
                         0
                     );
                     
-                    const lon = parseFloat(
+                    const lon = converterCoordenada(
                         colab.LONG || 
                         colab.long || 
                         colab.LON || 
@@ -774,6 +785,8 @@
                         debugLog(`Coordenadas inválidas para colaborador: ${JSON.stringify(colab)}`);
                         return;
                     }
+                    
+                    debugLog(`Colaborador: ${colab.COLABORADOR || colab.colaborador || colab.NOME || colab.nome || 'N/A'}, Lat: ${lat}, Lon: ${lon}`);
                     
                     // Criar marcador
                     const marker = L.marker([lat, lon], {
