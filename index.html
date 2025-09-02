@@ -401,6 +401,7 @@
         let markerCluster = null;
         let colaboradoresData = [];
         let colaboradoresBounds = null;
+        let colaboradoresAdicionados = false;
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
@@ -442,7 +443,7 @@
 
         // Função para carregar dados de colaboradores do CSV
         async function carregarColaboradoresCSV() {
-            return new Promise((resolve, reject) {
+            return new Promise((resolve, reject) => {
                 Papa.parse("COORDENADAS.csv", {
                     download: true,
                     header: true,
@@ -568,7 +569,7 @@
             }
         }
 
-        // Função para popular um elemento select with options
+        // Função para popular um elemento select com opções
         function popularSelect(selectElement, options) {
             selectElement.innerHTML = '';
             
@@ -586,6 +587,11 @@
                 option.textContent = opt;
                 selectElement.appendChild(option);
             });
+        }
+
+        // Função para verificar se os bounds são válidos
+        function boundsSaoValidos(bounds) {
+            return bounds && typeof bounds.isValid === 'function' && bounds.isValid();
         }
 
         // Função principal para gerar o mapa
@@ -612,7 +618,7 @@
                 await exibirColaboradoresNoMapa(rota);
                 
                 // Ajustar a visualização do mapa para mostrar todos os colaboradores
-                if (colaboradoresBounds && typeof colaboradoresBounds.isValid === 'function' && colaboradoresBounds.isValid()) {
+                if (colaboradoresAdicionados && boundsSaoValidos(colaboradoresBounds)) {
                     map.fitBounds(colaboradoresBounds, { padding: [50, 50] });
                     debugLog(`Mapa ajustado para mostrar colaboradores`);
                 }
@@ -744,6 +750,7 @@
                     ).filter(r => r))];
                     
                     debugLog(`Rotas disponíveis no CSV: ${todasRotas.join(', ')}`);
+                    colaboradoresAdicionados = false;
                     return;
                 }
                 
@@ -817,6 +824,7 @@
                 
                 // Adicionar cluster ao mapa
                 map.addLayer(markerCluster);
+                colaboradoresAdicionados = true;
                 
                 mostrarStatus(`${colaboradoresFiltrados.length} colaborador(es) encontrado(s) para a rota ${rotaBase}`);
                 debugLog(`${colaboradoresFiltrados.length} colaboradores adicionados ao mapa`);
@@ -825,6 +833,7 @@
                 console.error('Erro ao exibir colaboradores:', error);
                 mostrarStatus('Erro ao exibir colaboradores no mapa', 'warning');
                 debugLog(`Erro ao exibir colaboradores: ${error.message}`);
+                colaboradoresAdicionados = false;
             }
         }
 
@@ -844,6 +853,7 @@
             
             // Resetar bounds dos colaboradores
             colaboradoresBounds = L.latLngBounds();
+            colaboradoresAdicionados = false;
         }
 
         // Função para mostrar/ocultar loading
