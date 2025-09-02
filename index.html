@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Rotas KML</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <!-- Leaflet Marker Cluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        select, button {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+        }
+        
+        select {
+            background-image: linear-gradient(45deg, transparent 50%, #2c3e50 50%),
+                              linear-gradient(135deg, #2c3e50 50%, transparent 50%);
+            background-position: calc(100% - 20px) center, calc(100% - 15px) center;
+            background-size: 5px 5px, 5px 5px;
+            background-repeat: no-repeat;
+            appearance: none;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #map-container {
+            position: relative;
+            height: 600px;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+        
+        .loading {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .loading.active {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status {
+            padding: 15px;
+            text-align: center;
+            background: #e3f2fd;
+            border-top: 1px solid #bbdefb;
+            font-weight: 500;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 250px;
+        }
+        
+        .legend h4 {
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .blue-line {
+            background-color: blue;
+        }
+        
+        .green-marker {
+            background-color: #4CAF50;
+        }
+        
+        .cluster-marker {
+            background-color: #FF9800;
+        }
+        
+        .info-content {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .info-content h4 {
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                min-width: unset;
+            }
+            
+            #map-container {
+                height: 400px;
+            }
+            
+            .legend {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-map-marked-alt"></i> Visualizador de Rotas KML</h1>
+            <p>Visualize rotas a partir de arquivos KML e localize colaboradores</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="turno"><i class="fas fa-clock"></i> Turno:</label>
+                <select id="turno">
+                    <option value="">Carregando turnos...</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="rota"><i class="fas fa-route"></i> Rota:</label>
+                <select id="rota" disabled>
+                    <option value="">Selecione um turno primeiro</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button id="gerar-mapa" disabled>
+                    <i class="fas fa-map"></i> Gerar Mapa
+                </button>
+            </div>
+        </div>
+
+        <div id="map-container">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <div class="status" id="status">
+            Pronto para carregar dados. Selecione um turno e uma rota.
+        </div>
+    </div>
+
+    <div class="legend">
+        <h4>Legenda do Mapa</h4>
+        <div class="legend-item">
+            <div class="legend-color blue-line"></div>
+            <span>Rota (KML)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color green-marker"></div>
+            <span>Colaborador</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color cluster-marker"></div>
+            <span>Agrupamento de colaboradores</span>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <!-- Leaflet Marker Cluster -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    
+    <!-- Papa Parse para CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
+    <script>
+        // Configurações
+        const USER = "LevyCS07";
+        const REPO = "kml-rotas";
+        const BRANCH = "main";
+        const BASE_URL = `https://raw.githubusercontent.com/${USER}/${REPO}/${BRANCH}/`;
+        
+        // Elementos DOM
+        const turnoSelect = document.getElementById('turno');
+        const rotaSelect = document.getElementById('rota');
+        const gerarMapaBtn = document.getElementById('gerar-mapa');
+        const loadingDiv = document.getElementById('loading');
+        const statusDiv = document.getElementById('status');
+        const mapContainer = document.getElementById('map-container');
+        
+        // Variáveis globais
+        let map = null;
+        let turnosData = {};
+        let currentLayers = [];
+        let markerCluster = null;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            await inicializarAplicacao();
+        });
+
+        // Função para inicializar a aplicação
+        async function inicializarAplicacao() {
+            mostrarLoading(true, 'Carregando turnos...');
+            
+            try {
+                // Carregar dados de turnos
+                turnosData = await listarTurnos();
+                
+                // Popular dropdown de turnos
+                popularSelect(turnoSelect, Object.keys(turnosData));
+                
+                // Configurar event listeners
+                turnoSelect.addEventListener('change', atualizarRotasDropdown);
+                gerarMapaBtn.addEventListener('click', gerarMapa);
+                
+                // Inicializar mapa
+                inicializarMapa();
+                
+                mostrarStatus('Selecione um turno e uma rota para visualizar no mapa');
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+                mostrarStatus('Erro ao carregar dados. Verifique o console para detalhes.', 'error');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // Função para inicializar o mapa
+        function inicializarMapa() {
+            map = L.map('map').setView([-3.119, -60.021], 12);
+            
+            // Adicionar camada base do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Adicionar controle de camadas
+            L.control.scale({metric: true, imperial: false}).addTo(map);
+        }
+
+        // Função para listar turnos do GitHub
+        async function listarTurnos() {
+            const apiUrl = `https://api.github.com/repos/${USER}/${REPO}/contents`;
+            
+            try {
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ao acessar GitHub: ${response.status}`);
+                }
+                
+                const dados = await response.json();
+                const turnos = {};
+                
+                // Processar pastas (turnos)
+                for (const item of dados) {
+                    if (item.type === 'dir') {
+                        const pastaResponse = await fetch(item.url);
+                        
+                        if (pastaResponse.ok) {
+                            const arquivosPasta = await pastaResponse.json();
+                            const kmlFiles = arquivosPasta
+                                .filter(a => a.name.toLowerCase().endsWith('.kml'))
+                                .map(a => a.name);
+                            
+                            if (kmlFiles.length > 0) {
+                                turnos[item.name] = kmlFiles;
+                            }
+                        }
+                    }
+                }
+                
+                return turnos;
+            } catch (error) {
+                console.error('Erro ao listar turnos:', error);
+                mostrarStatus('Erro ao carregar turnos. Verifique o console para detalhes.', 'error');
+                return {};
+            }
+        }
+
+        // Função para atualizar o dropdown de rotas
+        function atualizarRotasDropdown() {
+            const turnoSelecionado = turnoSelect.value;
+            
+            if (!turnoSelecionado) {
+                rotaSelect.innerHTML = '<option value="">Selecione um turno</option>';
+                rotaSelect.disabled = true;
+                gerarMapaBtn.disabled = true;
+                return;
+            }
+            
+            const rotas = turnosData[turnoSelecionado] || [];
+            
+            if (rotas.length === 0) {
+                rotaSelect.innerHTML = '<option value="">Nenhuma rota encontrada</option>';
+                rotaSelect.disabled = true;
+                gerarMapaBtn.disabled = true;
+                mostrarStatus('Nenhuma rota KML encontrada para o turno selecionado', 'warning');
+            } else {
+                popularSelect(rotaSelect, rotas);
+                rotaSelect.disabled = false;
+                gerarMapaBtn.disabled = false;
+                mostrarStatus(`${rotas.length} rota(s) encontrada(s). Selecione uma para visualizar.`);
+            }
+        }
+
+        // Função para popular um elemento select com opções
+        function popularSelect(selectElement, options) {
+            selectElement.innerHTML = '';
+            
+            if (options.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Nenhuma opção disponível';
+                selectElement.appendChild(option);
+                return;
+            }
+            
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // Função principal para gerar o mapa
+        async function gerarMapa() {
+            const turno = turnoSelect.value;
+            const rota = rotaSelect.value;
+            
+            if (!turno || !rota) {
+                mostrarStatus('Selecione um turno e uma rota para gerar o mapa', 'warning');
+                return;
+            }
+            
+            mostrarLoading(true, 'Carregando rota e colaboradores...');
+            
+            try {
+                // Limpar layers anteriores
+                limparMapa();
+                
+                // Carregar e exibir KML
+                const kmlUrl = `${BASE_URL}${turno}/${rota}`;
+                await carregarKML(kmlUrl);
+                
+                // Carregar e exibir colaboradores
+                await carregarColaboradores(rota);
+                
+                mostrarStatus(`Mapa gerado com sucesso: ${rota}`);
+            } catch (error) {
+                console.error('Erro ao gerar mapa:', error);
+                mostrarStatus('Erro ao gerar mapa. Verifique o console para detalhes.', 'error');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // Função para carregar e exibir KML
+        async function carregarKML(url) {
+            try {
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ao carregar KML: ${response.status}`);
+                }
+                
+                const kmlText = await response.text();
+                
+                // Converter texto KML para DOM
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+                
+                // Verificar erros de parsing
+                const parseErrors = kmlDoc.getElementsByTagName('parsererror');
+                if (parseErrors.length > 0) {
+                    throw new Error('Erro ao processar arquivo KML');
+                }
+                
+                // Namespace KML
+                const ns = {kml: 'http://www.opengis.net/kml/2.2'};
+                
+                // Extrair Placemarks
+                const placemarks = kmlDoc.getElementsByTagName('Placemark');
+                const bounds = [];
+                
+                for (const placemark of placemarks) {
+                    // Processar LineStrings (rotas)
+                    const lineStrings = placemark.getElementsByTagName('LineString');
+                    for (const lineString of lineStrings) {
+                        const coordsElement = lineString.getElementsByTagName('coordinates')[0];
+                        if (coordsElement) {
+                            const coordsText = coordsElement.textContent.trim();
+                            const coords = coordsText.split(/\s+/).map(coord => {
+                                const [lon, lat] = coord.split(',').map(Number);
+                                return [lat, lon];
+                            });
+                            
+                            // Adicionar polyline ao mapa
+                            const polyline = L.polyline(coords, {color: 'blue', weight: 4}).addTo(map);
+                            currentLayers.push(polyline);
+                            
+                            // Adicionar coordenadas aos bounds
+                            coords.forEach(coord => bounds.push(coord));
+                        }
+                    }
+                    
+                    // Processar Points (pontos de interesse)
+                    const points = placemark.getElementsByTagName('Point');
+                    for (const point of points) {
+                        const coordsElement = point.getElementsByTagName('coordinates')[0];
+                        if (coordsElement) {
+                            const coordsText = coordsElement.textContent.trim();
+                            const [lon, lat] = coordsText.split(',').map(Number);
+                            
+                            // Adicionar marcador ao mapa
+                            const marker = L.marker([lat, lon]).addTo(map);
+                            currentLayers.push(marker);
+                            
+                            // Adicionar coordenada aos bounds
+                            bounds.push([lat, lon]);
+                        }
+                    }
+                }
+                
+                // Ajustar visualização do mapa para mostrar toda a rota
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, {padding: [20, 20]});
+                }
+                
+            } catch (error) {
+                console.error('Erro ao processar KML:', error);
+                throw new Error('Falha ao carregar o arquivo KML');
+            }
+        }
+
+        // Função para carregar e exibir colaboradores
+        async function carregarColaboradores(rotaNome) {
+            // Normalizar nome da rota para comparação
+            const rotaBase = rotaNome.replace('.kml', '').trim().toUpperCase();
+            
+            try {
+                // Carregar arquivo de colaboradores
+                // NOTA: Você precisará substituir isso pela lógica real de carregamento
+                // dos seus dados de colaboradores
+                const colaboradores = await carregarDadosColaboradores(rotaBase);
+                
+                // Criar cluster de marcadores
+                markerCluster = L.markerClusterGroup({
+                    maxClusterRadius: 40,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: true,
+                    zoomToBoundsOnClick: true
+                });
+                
+                // Adicionar marcadores para cada colaborador
+                colaboradores.forEach(colab => {
+                    const marker = L.marker([colab.lat, colab.lon], {
+                        icon: L.divIcon({
+                            html: '<i class="fas fa-user" style="color: white; font-size: 12px;"></i>',
+                            className: 'colaborador-marker',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        })
+                    });
+                    
+                    // Popup com informações do colaborador
+                    marker.bindPopup(`
+                        <div class="info-content">
+                            <h4>${colab.nome}</h4>
+                            <p><strong>Rota:</strong> ${colab.rota}</p>
+                            <p><strong>Coordenadas:</strong> ${colab.lat.toFixed(6)}, ${colab.lon.toFixed(6)}</p>
+                        </div>
+                    `);
+                    
+                    markerCluster.addLayer(marker);
+                });
+                
+                // Adicionar cluster ao mapa
+                map.addLayer(markerCluster);
+                
+            } catch (error) {
+                console.error('Erro ao carregar colaboradores:', error);
+                mostrarStatus('Erro ao carregar dados dos colaboradores', 'warning');
+            }
+        }
+
+        // Função para carregar dados de colaboradores (exemplo)
+        async function carregarDadosColaboradores(rotaBase) {
+            // Esta é uma função de exemplo - substitua pela sua lógica real
+            // que carrega os dados da sua planilha de colaboradores
+            
+            // Simulando uma resposta com dados de exemplo
+            return [
+                {nome: "João Silva", rota: rotaBase, lat: -3.119, lon: -60.021},
+                {nome: "Maria Santos", rota: rotaBase, lat: -3.120, lon: -60.022},
+                {nome: "Pedro Oliveira", rota: rotaBase, lat: -3.118, lon: -60.023},
+                {nome: "Ana Costa", rota: rotaBase, lat: -3.121, lon: -60.020}
+            ];
+            
+            // Na implementação real, você provavelmente fará:
+            // 1. Carregar a planilha COORDENADAS.xlsx (convertida para CSV ou JSON)
+            // 2. Filtrar os colaboradores pela rotaBase
+            // 3. Retornar os dados formatados
+        }
+
+        // Função para limpar o mapa
+        function limparMapa() {
+            // Remover layers anteriores
+            currentLayers.forEach(layer => {
+                map.removeLayer(layer);
+            });
+            currentLayers = [];
+            
+            // Remover cluster de marcadores
+            if (markerCluster) {
+                map.removeLayer(markerCluster);
+                markerCluster = null;
+            }
+        }
+
+        // Função para mostrar/ocultar loading
+        function mostrarLoading(mostrar, mensagem = '') {
+            if (mostrar) {
+                loadingDiv.classList.add('active');
+                if (mensagem) {
+                    loadingDiv.querySelector('p').textContent = mensagem;
+                }
+            } else {
+                loadingDiv.classList.remove('active');
+            }
+        }
+
+        // Função para mostrar status
+        function mostrarStatus(mensagem, tipo = 'info') {
+            statusDiv.textContent = mensagem;
+            
+            // Cores baseadas no tipo de mensagem
+            switch (tipo) {
+                case 'error':
+                    statusDiv.style.backgroundColor = '#ffebee';
+                    statusDiv.style.color = '#c62828';
+                    break;
+                case 'warning':
+                    statusDiv.style.backgroundColor = '#fff8e1';
+                    statusDiv.style.color = '#f57c00';
+                    break;
+                default:
+                    statusDiv.style.backgroundColor = '#e3f2fd';
+                    statusDiv.style.color = '#1565c0';
+            }
+        }
+    </script>
+</body>
+</html>
