@@ -442,7 +442,7 @@
 
         // Função para carregar dados de colaboradores do CSV
         async function carregarColaboradoresCSV() {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) {
                 Papa.parse("COORDENADAS.csv", {
                     download: true,
                     header: true,
@@ -535,7 +535,7 @@
             } catch (error) {
                 console.error('Erro ao listar turnos:', error);
                 mostrarStatus('Erro ao carregar turnos. Verifique o console para detalhes.', 'error');
-                debugLog(`Erro ao carregar turnos: ${error.message`);
+                debugLog(`Erro ao carregar turnos: ${error.message}`);
                 return {};
             }
         }
@@ -568,7 +568,7 @@
             }
         }
 
-        // Função para popular um elemento select com opções
+        // Função para popular um elemento select with options
         function popularSelect(selectElement, options) {
             selectElement.innerHTML = '';
             
@@ -612,9 +612,9 @@
                 await exibirColaboradoresNoMapa(rota);
                 
                 // Ajustar a visualização do mapa para mostrar todos os colaboradores
-                if (!colaboradoresBounds.isEmpty()) {
+                if (colaboradoresBounds && typeof colaboradoresBounds.isValid === 'function' && colaboradoresBounds.isValid()) {
                     map.fitBounds(colaboradoresBounds, { padding: [50, 50] });
-                    debugLog(`Mapa ajustado para mostrar colaboradores entre: ${colaboradoresBounds.getSouthWest()} e ${colaboradoresBounds.getNorthEast()}`);
+                    debugLog(`Mapa ajustado para mostrar colaboradores`);
                 }
                 
                 mostrarStatus(`Mapa gerado com sucesso: ${rota}`);
