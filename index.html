@@ -229,6 +229,27 @@
             color: #2c3e50;
         }
         
+        .debug-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .debug-toggle {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
         @media (max-width: 768px) {
             .controls {
                 flex-direction: column;
@@ -293,6 +314,12 @@
         <div class="status" id="status">
             Pronto para carregar dados. Selecione um turno e uma rota.
         </div>
+        
+        <button class="debug-toggle" onclick="toggleDebug()">Mostrar/Ocultar Informações de Debug</button>
+        <div class="debug-panel" id="debug-panel" style="display: none;">
+            <h4>Informações de Debug:</h4>
+            <div id="debug-content"></div>
+        </div>
     </div>
 
     <div class="legend">
@@ -334,6 +361,7 @@
         const loadingDiv = document.getElementById('loading');
         const statusDiv = document.getElementById('status');
         const mapContainer = document.getElementById('map-container');
+        const debugContent = document.getElementById('debug-panel');
         
         // Variáveis globais
         let map = null;
@@ -369,9 +397,12 @@
                 inicializarMapa();
                 
                 mostrarStatus('Selecione um turno e uma rota para visualizar no mapa');
+                debugLog('Aplicação inicializada com sucesso');
+                debugLog(`Total de colaboradores carregados: ${colaboradoresData.length}`);
             } catch (error) {
                 console.error('Erro na inicialização:', error);
                 mostrarStatus('Erro ao carregar dados. Verifique o console para detalhes.', 'error');
+                debugLog(`Erro na inicialização: ${error.message}`);
             } finally {
                 mostrarLoading(false);
             }
@@ -387,13 +418,23 @@
                     complete: function(results) {
                         if (results.data && results.data.length > 0) {
                             colaboradoresData = results.data;
-                            console.log("Dados de colaboradores carregados:", colaboradoresData.length, "registros");
+                            debugLog(`Dados de colaboradores carregados: ${colaboradoresData.length} registros`);
+                            
+                            // Log das primeiras linhas para debug
+                            if (colaboradoresData.length > 0) {
+                                debugLog(`Primeira linha do CSV: ${JSON.stringify(colaboradoresData[0])}`);
+                                debugLog(`Colunas disponíveis: ${Object.keys(colaboradoresData[0]).join(', ')}`);
+                            }
+                            
                             resolve(colaboradoresData);
                         } else {
-                            reject(new Error("Nenhum dado encontrado no CSV"));
+                            const errorMsg = "Nenhum dado encontrado no CSV";
+                            debugLog(errorMsg);
+                            reject(new Error(errorMsg));
                         }
                     },
                     error: function(error) {
+                        debugLog(`Erro ao carregar CSV: ${error.message}`);
                         reject(error);
                     }
                 });
@@ -445,10 +486,12 @@
                     }
                 }
                 
+                debugLog(`Turnos carregados: ${Object.keys(turnos).join(', ')}`);
                 return turnos;
             } catch (error) {
                 console.error('Erro ao listar turnos:', error);
                 mostrarStatus('Erro ao carregar turnos. Verifique o console para detalhes.', 'error');
+                debugLog(`Erro ao carregar turnos: ${error.message}`);
                 return {};
             }
         }
@@ -471,11 +514,13 @@
                 rotaSelect.disabled = true;
                 gerarMapaBtn.disabled = true;
                 mostrarStatus('Nenhuma rota KML encontrada para o turno selecionado', 'warning');
+                debugLog(`Nenhuma rota encontrada para o turno: ${turnoSelecionado}`);
             } else {
                 popularSelect(rotaSelect, rotas);
                 rotaSelect.disabled = false;
                 gerarMapaBtn.disabled = false;
                 mostrarStatus(`${rotas.length} rota(s) encontrada(s). Selecione uma para visualizar.`);
+                debugLog(`Rotas encontradas para ${turnoSelecionado}: ${rotas.join(', ')}`);
             }
         }
 
@@ -526,6 +571,7 @@
             } catch (error) {
                 console.error('Erro ao gerar mapa:', error);
                 mostrarStatus('Erro ao gerar mapa. Verifique o console para detalhes.', 'error');
+                debugLog(`Erro ao gerar mapa: ${error.message}`);
             } finally {
                 mostrarLoading(false);
             }
@@ -534,6 +580,7 @@
         // Função para carregar e exibir KML
         async function carregarKML(url) {
             try {
+                debugLog(`Carregando KML: ${url}`);
                 const response = await fetch(url);
                 
                 if (!response.ok) {
@@ -603,26 +650,50 @@
                     map.fitBounds(bounds, {padding: [20, 20]});
                 }
                 
+                debugLog(`KML carregado com sucesso: ${placemarks.length} placemarks processados`);
+                
             } catch (error) {
                 console.error('Erro ao processar KML:', error);
+                debugLog(`Erro ao processar KML: ${error.message}`);
                 throw new Error('Falha ao carregar o arquivo KML');
             }
         }
 
         // Função para exibir colaboradores no mapa
-        async function exibirColaboradoresNoMapa(rotaNome) {
-            // Normalizar nome da rota para comparação
-            const rotaBase = rotaNome.replace('.kml', '').trim().toUpperCase();
+        async function exibirColaboradoresNoMapa(rotaKml) {
+            // Remover a extensão .kml para comparar com o CSV
+            const rotaBase = rotaKml.replace('.kml', '').replace('.KML', '').trim();
+            debugLog(`Buscando colaboradores para a rota: "${rotaBase}"`);
             
             try {
                 // Filtrar colaboradores pela rota
                 const colaboradoresFiltrados = colaboradoresData.filter(colab => {
-                    const colabRota = String(colab.ROTA || colab.rota || '').trim().toUpperCase();
+                    // Procurar por várias possíveis colunas que podem conter o nome da rota
+                    const colabRota = String(
+                        colab.ROTA || 
+                        colab.rota || 
+                        colab.Rota || 
+                        colab['NOME ROTA'] || 
+                        colab['Nome Rota'] || 
+                        ''
+                    ).trim();
+                    
+                    debugLog(`Comparando: "${rotaBase}" com "${colabRota}"`);
                     return colabRota === rotaBase;
                 });
                 
+                debugLog(`Colaboradores filtrados: ${colaboradoresFiltrados.length} para a rota "${rotaBase}"`);
+                
                 if (colaboradoresFiltrados.length === 0) {
                     mostrarStatus(`Nenhum colaborador encontrado para a rota: ${rotaBase}`, 'warning');
+                    debugLog(`Nenhum colaborador encontrado. Verificando todas as rotas disponíveis no CSV...`);
+                    
+                    // Log de todas as rotas únicas no CSV para debug
+                    const todasRotas = [...new Set(colaboradoresData.map(c => 
+                        c.ROTA || c.rota || c.Rota || c['NOME ROTA'] || c['Nome Rota'] || ''
+                    ).filter(r => r))];
+                    
+                    debugLog(`Rotas disponíveis no CSV: ${todasRotas.join(', ')}`);
                     return;
                 }
                 
@@ -636,13 +707,28 @@
                 
                 // Adicionar marcadores para cada colaborador
                 colaboradoresFiltrados.forEach(colab => {
-                    // Extrair e converter coordenadas
-                    const lat = parseFloat(colab.LAT || colab.lat || 0);
-                    const lon = parseFloat(colab.LONG || colab.long || colab.lon || 0);
+                    // Extrair e converter coordenadas (verificando várias possíveis colunas)
+                    const lat = parseFloat(
+                        colab.LAT || 
+                        colab.lat || 
+                        colab.Latitude || 
+                        colab.latitude || 
+                        0
+                    );
+                    
+                    const lon = parseFloat(
+                        colab.LONG || 
+                        colab.long || 
+                        colab.LON || 
+                        colab.lon || 
+                        colab.Longitude || 
+                        colab.longitude || 
+                        0
+                    );
                     
                     // Verificar se as coordenadas são válidas
                     if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
-                        console.warn('Coordenadas inválidas para colaborador:', colab);
+                        debugLog(`Coordenadas inválidas para colaborador: ${JSON.stringify(colab)}`);
                         return;
                     }
                     
@@ -674,10 +760,12 @@
                 map.addLayer(markerCluster);
                 
                 mostrarStatus(`${colaboradoresFiltrados.length} colaborador(es) encontrado(s) para a rota ${rotaBase}`);
+                debugLog(`${colaboradoresFiltrados.length} colaboradores adicionados ao mapa`);
                 
             } catch (error) {
                 console.error('Erro ao exibir colaboradores:', error);
                 mostrarStatus('Erro ao exibir colaboradores no mapa', 'warning');
+                debugLog(`Erro ao exibir colaboradores: ${error.message}`);
             }
         }
 
@@ -726,6 +814,22 @@
                     statusDiv.style.backgroundColor = '#e3f2fd';
                     statusDiv.style.color = '#1565c0';
             }
+        }
+
+        // Função para adicionar logs de debug
+        function debugLog(mensagem) {
+            const now = new Date();
+            const timestamp = now.toTimeString().split(' ')[0];
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${mensagem}`;
+            debugContent.appendChild(logEntry);
+            console.log(mensagem);
+        }
+
+        // Função para mostrar/ocultar painel de debug
+        function toggleDebug() {
+            const debugPanel = document.getElementById('debug-panel');
+            debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
         }
     </script>
 </body>
