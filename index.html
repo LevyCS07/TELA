@@ -229,8 +229,32 @@
             color: #2c3e50;
         }
         
+        .debug-container {
+            padding: 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .debug-toggle {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .debug-toggle:hover {
+            background: #5a6268;
+        }
+        
         .debug-panel {
-            margin-top: 20px;
+            display: none;
             padding: 15px;
             background: #f5f5f5;
             border-radius: 8px;
@@ -238,16 +262,18 @@
             font-size: 14px;
             max-height: 200px;
             overflow-y: auto;
+            border: 1px solid #ddd;
         }
         
-        .debug-toggle {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
+        .debug-panel.active {
+            display: block;
+        }
+        
+        .debug-panel h4 {
             margin-bottom: 10px;
+            color: #2c3e50;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
         }
         
         @media (max-width: 768px) {
@@ -315,10 +341,14 @@
             Pronto para carregar dados. Selecione um turno e uma rota.
         </div>
         
-        <button class="debug-toggle" onclick="toggleDebug()">Mostrar/Ocultar Informações de Debug</button>
-        <div class="debug-panel" id="debug-panel" style="display: none;">
-            <h4>Informações de Debug:</h4>
-            <div id="debug-content"></div>
+        <div class="debug-container">
+            <button class="debug-toggle" onclick="toggleDebug()">
+                <i class="fas fa-bug"></i> Mostrar/Ocultar Informações de Debug
+            </button>
+            <div class="debug-panel" id="debug-panel">
+                <h4>Informações de Debug:</h4>
+                <div id="debug-content"></div>
+            </div>
         </div>
     </div>
 
@@ -361,9 +391,10 @@
         const loadingDiv = document.getElementById('loading');
         const statusDiv = document.getElementById('status');
         const mapContainer = document.getElementById('map-container');
-        const debugContent = document.getElementById('debug-panel');
+        const debugPanel = document.getElementById('debug-panel');
+        const debugContent = document.getElementById('debug-content');
         
-        // Variáveis globais
+        // Variáveis globales
         let map = null;
         let turnosData = {};
         let currentLayers = [];
@@ -824,12 +855,14 @@
             logEntry.textContent = `[${timestamp}] ${mensagem}`;
             debugContent.appendChild(logEntry);
             console.log(mensagem);
+            
+            // Auto-scroll para o final
+            debugContent.scrollTop = debugContent.scrollHeight;
         }
 
         // Função para mostrar/ocultar painel de debug
         function toggleDebug() {
-            const debugPanel = document.getElementById('debug-panel');
-            debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+            debugPanel.classList.toggle('active');
         }
     </script>
 </body>
