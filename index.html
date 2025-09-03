@@ -182,7 +182,7 @@
             background: white;
             padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px/10px rgba(0,0,0,0.2);
             z-index: 1000;
             max-width: 250px;
         }
@@ -419,8 +419,8 @@
                 // Carregar dados de colaboradores
                 await carregarColaboradoresCSV();
                 
-                // Carregar dados de turnos
-                turnosData = await listarTurnos();
+                // Carregar dados de turnos do GitHub
+                turnosData = await listarTurnosGitHub();
                 
                 // Popular dropdown de turnos
                 popularSelect(turnoSelect, Object.keys(turnosData));
@@ -432,6 +432,7 @@
                 mostrarStatus('Selecione um turno e uma rota para visualizar no mapa');
                 debugLog('Aplicação inicializada com sucesso');
                 debugLog(`Total de colaboradores carregados: ${colaboradoresData.length}`);
+                debugLog(`Turnos carregados: ${Object.keys(turnosData).join(', ')}`);
             } catch (error) {
                 console.error('Erro na inicialização:', error);
                 mostrarStatus('Erro ao carregar dados. Verifique o console para detalhes.', 'error');
@@ -501,38 +502,54 @@
             return parseFloat(valor);
         }
 
-        // Função para listar turnos - versão simplificada
-        async function listarTurnos() {
+        // Função para listar turnos do GitHub (pastas)
+        async function listarTurnosGitHub() {
             try {
-                // Para simplificar, vamos usar dados fixos de exemplo
-                // Em um cenário real, você buscaria isso da API do GitHub
-                const turnos = {
-                    "Manhã": [
-                        "ROTA 01 - 2T ESPECIAL XX P2.kml",
-                        "ROTA 02 - 2T ESPECIAL XX P2.kml"
-                    ],
-                    "Tarde": [
-                        "ROTA 03 - 2T ESPECIAL XX P2.kml",
-                        "ROTA 04 - 2T ESPECIAL XX P2.kml"
-                    ],
-                    "Noite": [
-                        "ROTA 05 - 2T ESPECIAL XX P2.kml",
-                        "ROTA 06 - 2T ESPECIAL XX P2.kml"
-                    ]
-                };
+                debugLog('Carregando turnos do GitHub...');
                 
-                debugLog(`Turnos carregados: ${Object.keys(turnos).join(', ')}`);
+                const apiUrl = `https://api.github.com/repos/${USER}/${REPO}/contents`;
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ao acessar GitHub: ${response.status}`);
+                }
+                
+                const dados = await response.json();
+                const turnos = {};
+                
+                // Processar pastas (turnos)
+                for (const item of dados) {
+                    if (item.type === 'dir') {
+                        const pastaNome = item.name;
+                        debugLog(`Encontrada pasta: ${pastaNome}`);
+                        
+                        // Buscar arquivos KML dentro desta pasta
+                        const pastaResponse = await fetch(item.url);
+                        if (pastaResponse.ok) {
+                            const arquivosPasta = await pastaResponse.json();
+                            const kmlFiles = arquivosPasta
+                                .filter(a => a.name.toLowerCase().endsWith('.kml'))
+                                .map(a => a.name);
+                            
+                            if (kmlFiles.length > 0) {
+                                turnos[pastaNome] = kmlFiles;
+                                debugLog(`Encontrados ${kmlFiles.length} arquivos KML na pasta ${pastaNome}`);
+                            }
+                        }
+                    }
+                }
+                
+                if (Object.keys(turnos).length === 0) {
+                    debugLog('Nenhuma pasta com arquivos KML encontrada no repositório');
+                    mostrarStatus('Nenhum turno com rotas KML encontrado', 'warning');
+                }
+                
                 return turnos;
             } catch (error) {
-                console.error('Erro ao listar turnos:', error);
-                debugLog(`Erro ao carregar turnos: ${error.message}`);
-                
-                // Retornar dados de exemplo em caso de erro
-                return {
-                    "Manhã": ["ROTA 01 - 2T ESPECIAL XX P2.kml", "ROTA 02 - 2T ESPECIAL XX P2.kml"],
-                    "Tarde": ["ROTA 03 - 2T ESPECIAL XX P2.kml", "ROTA 04 - 2T ESPECIAL XX P2.kml"],
-                    "Noite": ["ROTA 05 - 2T ESPECIAL XX P2.kml", "ROTA 06 - 2T ESPECIAL XX P2.kml"]
-                };
+                console.error('Erro ao listar turnos do GitHub:', error);
+                debugLog(`Erro ao carregar turnos do GitHub: ${error.message}`);
+                mostrarStatus('Erro ao carregar turnos do GitHub', 'error');
+                return {};
             }
         }
 
@@ -627,14 +644,45 @@
             }
         }
 
-        // Função para carregar e exibir KML (versão simplificada)
+        // Função para carregar e exibir KML do GitHub
         async function carregarKML(turno, rota) {
             try {
-                // Em vez de tentar carregar um KML real, vamos simular uma rota
-                // com base no nome da rota selecionada
-                debugLog(`Simulando rota KML para: ${turno}/${rota}`);
+                const kmlUrl = `${BASE_URL}${encodeURIComponent(turno)}/${encodeURIComponent(rota)}`;
+                debugLog(`Carregando KML: ${kmlUrl}`);
                 
-                // Extrair número da rota do nome do arquivo
+                const response = await fetch(kmlUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ao carregar KML: ${response.status}`);
+                }
+                
+                const kmlText = await response.text();
+                
+                // Verificar se o KML está vazio ou inválido
+                if (!kmlText || kmlText.length < 100) {
+                    throw new Error('KML vazio ou inválido');
+                }
+                
+                // Criar um elemento temporário para mostrar que o KML foi carregado
+                const marker = L.marker([-3.119, -60.021], {
+                    icon: L.divIcon({
+                        html: '<i class="fas fa-route" style="color: white; font-size: 12px;"></i>',
+                        className: 'rota-marker',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`<div class="info-content"><h4>Rota KML</h4><p>Arquivo: ${rota}</p><p>Turno: ${turno}</p><p>KML carregado com sucesso</p></div>`);
+                currentLayers.push(marker);
+                
+                debugLog(`KML carregado com sucesso: ${rota}`);
+                
+            } catch (error) {
+                console.error('Erro ao carregar KML:', error);
+                debugLog(`Erro ao carregar KML: ${error.message}`);
+                
+                // Criar uma representação visual da rota mesmo se o KML não carregar
                 const numeroRota = rota.match(/\d+/)?.[0] || '1';
                 const num = parseInt(numeroRota);
                 
@@ -677,7 +725,7 @@
                     <div class="info-content">
                         <h4>${rota.replace('.kml', '')}</h4>
                         <p><strong>Turno:</strong> ${turno}</p>
-                        <p><strong>Rota simulada</strong></p>
+                        <p><strong>Rota simulada (KML não pôde ser carregado)</strong></p>
                     </div>
                 `);
                 
@@ -687,11 +735,6 @@
                 map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
                 
                 debugLog(`Rota simulada criada para: ${rota}`);
-                
-            } catch (error) {
-                console.error('Erro ao criar rota simulada:', error);
-                debugLog(`Erro ao criar rota simulada: ${error.message}`);
-                throw new Error('Falha ao criar rota');
             }
         }
 
