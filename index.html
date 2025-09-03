@@ -104,6 +104,16 @@
         .cluster-marker {
             background-color: #FF9800;
         }
+
+        /* Estilo personalizado para os marcadores de colaborador */
+        .colaborador-marker {
+            background-color: #4CAF50;
+            border: 2px solid white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -507,6 +517,16 @@
             }
         }
 
+        // Função para criar ícone verde personalizado
+        function criarIconeVerde() {
+            return L.divIcon({
+                html: '<i class="fas fa-user" style="color: white; font-size: 12px;"></i>',
+                className: 'colaborador-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
+
         // Função para exibir colaboradores no mapa
         async function exibirColaboradoresNoMapa(rotaKml) {
             // Remover a extensão .kml para comparar com o CSV
@@ -525,12 +545,21 @@
                     return;
                 }
                 
-                // Criar cluster de marcadores
+                // Criar cluster de marcadores com ícones personalizados
                 markerCluster = L.markerClusterGroup({
                     maxClusterRadius: 40,
                     spiderfyOnMaxZoom: true,
                     showCoverageOnHover: true,
-                    zoomToBoundsOnClick: true
+                    zoomToBoundsOnClick: true,
+                    // Configurar ícones personalizados para os clusters
+                    iconCreateFunction: function(cluster) {
+                        const count = cluster.getChildCount();
+                        return L.divIcon({
+                            html: `<div style="background-color: #FF9800; color: white; border-radius: 50%; width: 40px; height: 40px; text-align: center; line-height: 40px; font-weight: bold;">${count}</div>`,
+                            className: 'marker-cluster-custom',
+                            iconSize: L.point(40, 40)
+                        });
+                    }
                 });
                 
                 // Resetar bounds dos colaboradores
@@ -547,14 +576,9 @@
                         return;
                     }
                     
-                    // Criar marcador
+                    // Criar marcador com ícone verde personalizado
                     const marker = L.marker([lat, lon], {
-                        icon: L.divIcon({
-                            html: '<i class="fas fa-user" style="color: white; font-size: 12px;"></i>',
-                            className: 'colaborador-marker',
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12]
-                        })
+                        icon: criarIconeVerde()
                     });
                     
                     // Popup com informações do colaborador
