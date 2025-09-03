@@ -3,134 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizador de Rotas KML</title>
+    <title>Visualizador de Rotas e Colaboradores</title>
     
-    <!-- Leaflet CSS -->
+    <!-- Folium/Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    
-    <!-- Leaflet Marker Cluster -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
-    <!-- Font Awesome -->
+    <!-- Bootstrap para melhorar a interface -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        body {
+            background-color: #f8f9fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
-        body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        
-        header {
+        .header {
             background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
             color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 20px;
         }
         
-        header h1 {
-            margin-bottom: 10px;
-            font-size: 2.2rem;
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
         }
         
-        header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        
-        .controls {
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-width: 250px;
-        }
-        
-        .control-group label {
-            font-weight: bold;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        select, button {
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            background: white;
-        }
-        
-        select {
-            background-image: linear-gradient(45deg, transparent 50%, #2c3e50 50%),
-                              linear-gradient(135deg, #2c3e50 50%, transparent 50%);
-            background-position: calc(100% - 20px) center, calc(100% - 15px) center;
-            background-size: 5px 5px, 5px 5px;
-            background-repeat: no-repeat;
-            appearance: none;
-        }
-        
-        button {
+        .card-header {
             background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
             color: white;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
+            border-radius: 10px 10px 0 0 !important;
             font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        
-        button:disabled {
-            background: #cccccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        #map-container {
-            position: relative;
-            height: 600px;
         }
         
         #map {
-            height: 100%;
-            width: 100%;
+            height: 600px;
+            border-radius: 0 0 10px 10px;
             z-index: 1;
         }
         
@@ -146,33 +61,11 @@
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            gap: 15px;
         }
         
-        .loading.active {
-            display: flex;
-        }
-        
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .status {
-            padding: 15px;
-            text-align: center;
-            background: #e3f2fd;
-            border-top: 1px solid #bbdefb;
-            font-weight: 500;
+        .table-responsive {
+            max-height: 300px;
+            overflow-y: auto;
         }
         
         .legend {
@@ -180,31 +73,24 @@
             bottom: 20px;
             right: 20px;
             background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px/10px rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
             z-index: 1000;
-            max-width: 250px;
-        }
-        
-        .legend h4 {
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
+            font-size: 12px;
         }
         
         .legend-item {
             display: flex;
             align-items: center;
-            margin: 8px 0;
+            margin: 5px 0;
         }
         
         .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
             border-radius: 50%;
-            flex-shrink: 0;
         }
         
         .blue-line {
@@ -218,142 +104,86 @@
         .cluster-marker {
             background-color: #FF9800;
         }
-        
-        .info-content {
-            font-size: 14px;
-            line-height: 1.4;
-        }
-        
-        .info-content h4 {
-            margin-bottom: 5px;
-            color: #2c3e50;
-        }
-        
-        .debug-container {
-            padding: 15px;
-            background: #f8f9fa;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .debug-toggle {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 10px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .debug-toggle:hover {
-            background: #5a6268;
-        }
-        
-        .debug-panel {
-            display: none;
-            padding: 15px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 14px;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-        }
-        
-        .debug-panel.active {
-            display: block;
-        }
-        
-        .debug-panel h4 {
-            margin-bottom: 10px;
-            color: #2c3e50;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-        }
-        
-        @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .control-group {
-                min-width: unset;
-            }
-            
-            #map-container {
-                height: 400px;
-            }
-            
-            .legend {
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
-                max-width: unset;
-            }
-        }
     </style>
 </head>
 <body>
+    <div class="header text-center">
+        <div class="container">
+            <h1><i class="fas fa-map-marked-alt"></i> Visualizador de Rotas e Colaboradores</h1>
+            <p class="lead">Visualize rotas a partir de arquivos KML e localize colaboradores no mapa</p>
+        </div>
+    </div>
+
     <div class="container">
-        <header>
-            <h1><i class="fas fa-map-marked-alt"></i> Visualizador de Rotas KML</h1>
-            <p>Visualize rotas a partir de arquivos KML e localize colaboradores</p>
-        </header>
-
-        <div class="controls">
-            <div class="control-group">
-                <label for="turno"><i class="fas fa-clock"></i> Turno:</label>
-                <select id="turno">
-                    <option value="">Carregando turnos...</option>
-                </select>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-cogs"></i> Controles
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="turno" class="form-label"><i class="fas fa-clock"></i> Turno:</label>
+                            <select id="turno" class="form-select">
+                                <option value="">Carregando turnos...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="rota" class="form-label"><i class="fas fa-route"></i> Rota:</label>
+                            <select id="rota" class="form-select" disabled>
+                                <option value="">Selecione um turno primeiro</option>
+                            </select>
+                        </div>
+                        
+                        <button id="gerar-mapa" class="btn btn-success w-100" disabled>
+                            <i class="fas fa-map"></i> Gerar Mapa
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-info-circle"></i> Status
+                    </div>
+                    <div class="card-body">
+                        <div id="status">Pronto para carregar dados. Selecione um turno e uma rota.</div>
+                    </div>
+                </div>
             </div>
-
-            <div class="control-group">
-                <label for="rota"><i class="fas fa-route"></i> Rota:</label>
-                <select id="rota" disabled>
-                    <option value="">Selecione um turno primeiro</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label>&nbsp;</label>
-                <button id="gerar-mapa" disabled>
-                    <i class="fas fa-map"></i> Gerar Mapa
-                </button>
-            </div>
-        </div>
-
-        <div id="map-container">
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>Carregando dados...</p>
-            </div>
-            <div id="map"></div>
-        </div>
-
-        <div class="status" id="status">
-            Pronto para carregar dados. Selecione um turno e uma rota.
-        </div>
-        
-        <div class="debug-container">
-            <button class="debug-toggle" onclick="toggleDebug()">
-                <i class="fas fa-bug"></i> Mostrar/Ocultar Informações de Debug
-            </button>
-            <div class="debug-panel" id="debug-panel">
-                <h4>Informações de Debug:</h4>
-                <div id="debug-content"></div>
+            
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-map"></i> Mapa
+                    </div>
+                    <div class="position-relative">
+                        <div class="loading" id="loading">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Carregando dados...</p>
+                        </div>
+                        <div id="map"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-users"></i> Colaboradores
+                    </div>
+                    <div class="card-body">
+                        <div id="tabela-colaboradores">
+                            <p class="text-center text-muted">Nenhum colaborador carregado ainda.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="legend">
-        <h4>Legenda do Mapa</h4>
+        <h6>Legenda</h6>
         <div class="legend-item">
             <div class="legend-color blue-line"></div>
             <span>Rota (KML)</span>
@@ -364,17 +194,14 @@
         </div>
         <div class="legend-item">
             <div class="legend-color cluster-marker"></div>
-            <span>Agrupamento de colaboradores</span>
+            <span>Agrupamento</span>
         </div>
     </div>
 
-    <!-- Leaflet JS -->
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    
-    <!-- Leaflet Marker Cluster -->
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    
-    <!-- Papa Parse para CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     
     <script>
@@ -390,9 +217,8 @@
         const gerarMapaBtn = document.getElementById('gerar-mapa');
         const loadingDiv = document.getElementById('loading');
         const statusDiv = document.getElementById('status');
-        const mapContainer = document.getElementById('map-container');
-        const debugPanel = document.getElementById('debug-panel');
-        const debugContent = document.getElementById('debug-content');
+        const tabelaColaboradores = document.getElementById('tabela-colaboradores');
+        const mapDiv = document.getElementById('map');
         
         // Variáveis globais
         let map = null;
@@ -401,7 +227,6 @@
         let markerCluster = null;
         let colaboradoresData = [];
         let colaboradoresBounds = null;
-        let colaboradoresAdicionados = false;
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
@@ -413,13 +238,13 @@
             mostrarLoading(true, 'Carregando dados...');
             
             try {
-                // Inicializar mapa primeiro para que esteja sempre disponível
+                // Inicializar mapa
                 inicializarMapa();
                 
                 // Carregar dados de colaboradores
                 await carregarColaboradoresCSV();
                 
-                // Carregar dados de turnos do GitHub
+                // Carregar dados de turnos
                 turnosData = await listarTurnosGitHub();
                 
                 // Popular dropdown de turnos
@@ -430,13 +255,9 @@
                 gerarMapaBtn.addEventListener('click', gerarMapa);
                 
                 mostrarStatus('Selecione um turno e uma rota para visualizar no mapa');
-                debugLog('Aplicação inicializada com sucesso');
-                debugLog(`Total de colaboradores carregados: ${colaboradoresData.length}`);
-                debugLog(`Turnos carregados: ${Object.keys(turnosData).join(', ')}`);
             } catch (error) {
                 console.error('Erro na inicialização:', error);
                 mostrarStatus('Erro ao carregar dados. Verifique o console para detalhes.', 'error');
-                debugLog(`Erro na inicialização: ${error.message}`);
             } finally {
                 mostrarLoading(false);
             }
@@ -452,23 +273,13 @@
                     complete: function(results) {
                         if (results.data && results.data.length > 0) {
                             colaboradoresData = results.data;
-                            debugLog(`Dados de colaboradores carregados: ${colaboradoresData.length} registros`);
-                            
-                            // Log das primeiras linhas para debug
-                            if (colaboradoresData.length > 0) {
-                                debugLog(`Primeira linha do CSV: ${JSON.stringify(colaboradoresData[0])}`);
-                                debugLog(`Colunas disponíveis: ${Object.keys(colaboradoresData[0]).join(', ')}`);
-                            }
-                            
+                            console.log("Dados de colaboradores carregados:", colaboradoresData.length, "registros");
                             resolve(colaboradoresData);
                         } else {
-                            const errorMsg = "Nenhum dado encontrado no CSV";
-                            debugLog(errorMsg);
-                            reject(new Error(errorMsg));
+                            reject(new Error("Nenhum dado encontrado no CSV"));
                         }
                     },
                     error: function(error) {
-                        debugLog(`Erro ao carregar CSV: ${error.message}`);
                         reject(error);
                     }
                 });
@@ -489,8 +300,6 @@
             
             // Inicializar bounds para colaboradores
             colaboradoresBounds = L.latLngBounds();
-            
-            debugLog('Mapa inicializado com sucesso');
         }
 
         // Função para converter coordenadas com vírgula para formato decimal
@@ -505,8 +314,6 @@
         // Função para listar turnos do GitHub (pastas)
         async function listarTurnosGitHub() {
             try {
-                debugLog('Carregando turnos do GitHub...');
-                
                 const apiUrl = `https://api.github.com/repos/${USER}/${REPO}/contents`;
                 const response = await fetch(apiUrl);
                 
@@ -521,7 +328,6 @@
                 for (const item of dados) {
                     if (item.type === 'dir') {
                         const pastaNome = item.name;
-                        debugLog(`Encontrada pasta: ${pastaNome}`);
                         
                         // Buscar arquivos KML dentro desta pasta
                         const pastaResponse = await fetch(item.url);
@@ -533,21 +339,14 @@
                             
                             if (kmlFiles.length > 0) {
                                 turnos[pastaNome] = kmlFiles;
-                                debugLog(`Encontrados ${kmlFiles.length} arquivos KML na pasta ${pastaNome}`);
                             }
                         }
                     }
                 }
                 
-                if (Object.keys(turnos).length === 0) {
-                    debugLog('Nenhuma pasta com arquivos KML encontrada no repositório');
-                    mostrarStatus('Nenhum turno com rotas KML encontrado', 'warning');
-                }
-                
                 return turnos;
             } catch (error) {
                 console.error('Erro ao listar turnos do GitHub:', error);
-                debugLog(`Erro ao carregar turnos do GitHub: ${error.message}`);
                 mostrarStatus('Erro ao carregar turnos do GitHub', 'error');
                 return {};
             }
@@ -571,13 +370,11 @@
                 rotaSelect.disabled = true;
                 gerarMapaBtn.disabled = true;
                 mostrarStatus('Nenhuma rota KML encontrada para o turno selecionado', 'warning');
-                debugLog(`Nenhuma rota encontrada para o turno: ${turnoSelecionado}`);
             } else {
                 popularSelect(rotaSelect, rotas);
                 rotaSelect.disabled = false;
                 gerarMapaBtn.disabled = false;
                 mostrarStatus(`${rotas.length} rota(s) encontrada(s). Selecione uma para visualizar.`);
-                debugLog(`Rotas encontradas para ${turnoSelecionado}: ${rotas.join(', ')}`);
             }
         }
 
@@ -599,11 +396,6 @@
                 option.textContent = opt;
                 selectElement.appendChild(option);
             });
-        }
-
-        // Função para verificar se os bounds são válidos
-        function boundsSaoValidos(bounds) {
-            return bounds && typeof bounds.isValid === 'function' && bounds.isValid();
         }
 
         // Função principal para gerar o mapa
@@ -628,17 +420,15 @@
                 // Carregar e exibir colaboradores
                 await exibirColaboradoresNoMapa(rota);
                 
-                // Ajustar a visualização do mapa para mostrar todos os colaboradores
-                if (colaboradoresAdicionados && boundsSaoValidos(colaboradoresBounds)) {
+                // Ajustar a visualização do mapa
+                if (colaboradoresBounds.isValid()) {
                     map.fitBounds(colaboradoresBounds, { padding: [50, 50] });
-                    debugLog(`Mapa ajustado para mostrar colaboradores`);
                 }
                 
                 mostrarStatus(`Mapa gerado com sucesso: ${rota}`);
             } catch (error) {
                 console.error('Erro ao gerar mapa:', error);
                 mostrarStatus('Erro ao gerar mapa. Verifique o console para detalhes.', 'error');
-                debugLog(`Erro ao gerar mapa: ${error.message}`);
             } finally {
                 mostrarLoading(false);
             }
@@ -648,8 +438,6 @@
         async function carregarKML(turno, rota) {
             try {
                 const kmlUrl = `${BASE_URL}${encodeURIComponent(turno)}/${encodeURIComponent(rota)}`;
-                debugLog(`Carregando KML: ${kmlUrl}`);
-                
                 const response = await fetch(kmlUrl);
                 
                 if (!response.ok) {
@@ -658,83 +446,64 @@
                 
                 const kmlText = await response.text();
                 
-                // Verificar se o KML está vazio ou inválido
-                if (!kmlText || kmlText.length < 100) {
-                    throw new Error('KML vazio ou inválido');
+                // Criar um parser para processar o KML
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+                
+                // Namespace KML
+                const ns = {kml: 'http://www.opengis.net/kml/2.2'};
+                
+                // Extrair Placemarks
+                const placemarks = kmlDoc.getElementsByTagName('Placemark');
+                const bounds = [];
+                
+                for (const placemark of placemarks) {
+                    // Processar LineStrings (rotas)
+                    const lineStrings = placemark.getElementsByTagName('LineString');
+                    for (const lineString of lineStrings) {
+                        const coordsElement = lineString.getElementsByTagName('coordinates')[0];
+                        if (coordsElement) {
+                            const coordsText = coordsElement.textContent.trim();
+                            const coords = coordsText.split(/\s+/).map(coord => {
+                                const [lon, lat] = coord.split(',').map(Number);
+                                return [lat, lon];
+                            });
+                            
+                            // Adicionar polyline ao mapa
+                            const polyline = L.polyline(coords, {color: 'blue', weight: 4}).addTo(map);
+                            currentLayers.push(polyline);
+                            
+                            // Adicionar coordenadas aos bounds
+                            coords.forEach(coord => bounds.push(coord));
+                        }
+                    }
+                    
+                    // Processar Points (pontos de interesse)
+                    const points = placemark.getElementsByTagName('Point');
+                    for (const point of points) {
+                        const coordsElement = point.getElementsByTagName('coordinates')[0];
+                        if (coordsElement) {
+                            const coordsText = coordsElement.textContent.trim();
+                            const [lon, lat] = coordsText.split(',').map(Number);
+                            
+                            // Adicionar marcador ao mapa
+                            const marker = L.marker([lat, lon]).addTo(map);
+                            currentLayers.push(marker);
+                            
+                            // Adicionar coordenada aos bounds
+                            bounds.push([lat, lon]);
+                        }
+                    }
                 }
                 
-                // Criar um elemento temporário para mostrar que o KML foi carregado
-                const marker = L.marker([-3.119, -60.021], {
-                    icon: L.divIcon({
-                        html: '<i class="fas fa-route" style="color: white; font-size: 12px;"></i>',
-                        className: 'rota-marker',
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 12]
-                    })
-                }).addTo(map);
-                
-                marker.bindPopup(`<div class="info-content"><h4>Rota KML</h4><p>Arquivo: ${rota}</p><p>Turno: ${turno}</p><p>KML carregado com sucesso</p></div>`);
-                currentLayers.push(marker);
-                
-                debugLog(`KML carregado com sucesso: ${rota}`);
+                // Ajustar visualização do mapa para mostrar toda a rota
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, {padding: [20, 20]});
+                }
                 
             } catch (error) {
-                console.error('Erro ao carregar KML:', error);
-                debugLog(`Erro ao carregar KML: ${error.message}`);
-                
-                // Criar uma representação visual da rota mesmo se o KML não carregar
-                const numeroRota = rota.match(/\d+/)?.[0] || '1';
-                const num = parseInt(numeroRota);
-                
-                // Gerar coordenadas simuladas baseadas no número da rota
-                const centroLat = -3.119 + (num * 0.01);
-                const centroLon = -60.021 + (num * 0.01);
-                
-                // Criar uma rota circular simulada
-                const pontos = [];
-                for (let i = 0; i < 12; i++) {
-                    const angle = (i / 12) * Math.PI * 2;
-                    const lat = centroLat + Math.cos(angle) * 0.01;
-                    const lon = centroLon + Math.sin(angle) * 0.01;
-                    pontos.push([lat, lon]);
-                }
-                
-                // Fechar o círculo
-                pontos.push(pontos[0]);
-                
-                // Adicionar polyline ao mapa
-                const polyline = L.polyline(pontos, {
-                    color: 'blue', 
-                    weight: 4,
-                    opacity: 0.7
-                }).addTo(map);
-                
-                currentLayers.push(polyline);
-                
-                // Adicionar marcador no centro
-                const marker = L.marker([centroLat, centroLon], {
-                    icon: L.divIcon({
-                        html: '<i class="fas fa-route" style="color: white; font-size: 12px;"></i>',
-                        className: 'rota-marker',
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 12]
-                    })
-                }).addTo(map);
-                
-                marker.bindPopup(`
-                    <div class="info-content">
-                        <h4>${rota.replace('.kml', '')}</h4>
-                        <p><strong>Turno:</strong> ${turno}</p>
-                        <p><strong>Rota simulada (KML não pôde ser carregado)</strong></p>
-                    </div>
-                `);
-                
-                currentLayers.push(marker);
-                
-                // Ajustar visualização para mostrar a rota
-                map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
-                
-                debugLog(`Rota simulada criada para: ${rota}`);
+                console.error('Erro ao processar KML:', error);
+                throw new Error('Falha ao carregar o arquivo KML');
             }
         }
 
@@ -742,38 +511,17 @@
         async function exibirColaboradoresNoMapa(rotaKml) {
             // Remover a extensão .kml para comparar com o CSV
             const rotaBase = rotaKml.replace('.kml', '').replace('.KML', '').trim();
-            debugLog(`Buscando colaboradores para a rota: "${rotaBase}"`);
             
             try {
                 // Filtrar colaboradores pela rota
                 const colaboradoresFiltrados = colaboradoresData.filter(colab => {
-                    // Procurar por várias possíveis colunas que podem conter o nome da rota
-                    const colabRota = String(
-                        colab.ROTA || 
-                        colab.rota || 
-                        colab.Rota || 
-                        colab['NOME ROTA'] || 
-                        colab['Nome Rota'] || 
-                        ''
-                    ).trim();
-                    
-                    debugLog(`Comparando: "${rotaBase}" com "${colabRota}"`);
+                    const colabRota = String(colab.ROTA || '').trim();
                     return colabRota === rotaBase;
                 });
                 
-                debugLog(`Colaboradores filtrados: ${colaboradoresFiltrados.length} para a rota "${rotaBase}"`);
-                
                 if (colaboradoresFiltrados.length === 0) {
                     mostrarStatus(`Nenhum colaborador encontrado para a rota: ${rotaBase}`, 'warning');
-                    debugLog(`Nenhum colaborador encontrado. Verificando todas as rotas disponíveis no CSV...`);
-                    
-                    // Log de todas as rotas únicas no CSV para debug
-                    const todasRotas = [...new Set(colaboradoresData.map(c => 
-                        c.ROTA || c.rota || c.Rota || c['NOME ROTA'] || c['Nome Rota'] || ''
-                    ).filter(r => r))];
-                    
-                    debugLog(`Rotas disponíveis no CSV: ${todasRotas.join(', ')}`);
-                    colaboradoresAdicionados = false;
+                    tabelaColaboradores.innerHTML = '<p class="text-center text-muted">Nenhum colaborador encontrado para esta rota.</p>';
                     return;
                 }
                 
@@ -790,33 +538,14 @@
                 
                 // Adicionar marcadores para cada colaborador
                 colaboradoresFiltrados.forEach(colab => {
-                    // Extrair e converter coordenadas (verificando várias possíveis colunas)
-                    // Usar a função converterCoordenada para lidar com vírgulas
-                    const lat = converterCoordenada(
-                        colab.LAT || 
-                        colab.lat || 
-                        colab.Latitude || 
-                        colab.latitude || 
-                        0
-                    );
-                    
-                    const lon = converterCoordenada(
-                        colab.LONG || 
-                        colab.long || 
-                        colab.LON || 
-                        colab.lon || 
-                        colab.Longitude || 
-                        colab.longitude || 
-                        0
-                    );
+                    // Extrair e converter coordenadas
+                    const lat = converterCoordenada(colab.LAT || 0);
+                    const lon = converterCoordenada(colab.LONG || 0);
                     
                     // Verificar se as coordenadas são válidas
                     if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
-                        debugLog(`Coordenadas inválidas para colaborador: ${JSON.stringify(colab)}`);
                         return;
                     }
-                    
-                    debugLog(`Colaborador: ${colab.COLABORADOR || colab.colaborador || colab.NOME || colab.nome || 'N/A'}, Lat: ${lat}, Lon: ${lon}`);
                     
                     // Criar marcador
                     const marker = L.marker([lat, lon], {
@@ -829,11 +558,11 @@
                     });
                     
                     // Popup com informações do colaborador
-                    const nome = colab.COLABORADOR || colab.colaborador || colab.NOME || colab.nome || 'N/A';
+                    const nome = colab.COLABORADOR || 'N/A';
                     const popupContent = `
                         <div class="info-content">
-                            <h4>${nome}</h4>
-                            <p><strong>Rota:</strong> ${colab.ROTA || colab.rota || 'N/A'}</p>
+                            <h5>${nome}</h5>
+                            <p><strong>Rota:</strong> ${colab.ROTA || 'N/A'}</p>
                             <p><strong>Coordenadas:</strong> ${lat.toFixed(6)}, ${lon.toFixed(6)}</p>
                         </div>
                     `;
@@ -847,17 +576,54 @@
                 
                 // Adicionar cluster ao mapa
                 map.addLayer(markerCluster);
-                colaboradoresAdicionados = true;
+                
+                // Exibir tabela de colaboradores
+                exibirTabelaColaboradores(colaboradoresFiltrados);
                 
                 mostrarStatus(`${colaboradoresFiltrados.length} colaborador(es) encontrado(s) para a rota ${rotaBase}`);
-                debugLog(`${colaboradoresFiltrados.length} colaboradores adicionados ao mapa`);
                 
             } catch (error) {
                 console.error('Erro ao exibir colaboradores:', error);
                 mostrarStatus('Erro ao exibir colaboradores no mapa', 'warning');
-                debugLog(`Erro ao exibir colaboradores: ${error.message}`);
-                colaboradoresAdicionados = false;
             }
+        }
+
+        // Função para exibir tabela de colaboradores
+        function exibirTabelaColaboradores(colaboradores) {
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            colaboradores.forEach(colab => {
+                const lat = converterCoordenada(colab.LAT || 0);
+                const lon = converterCoordenada(colab.LONG || 0);
+                
+                html += `
+                    <tr>
+                        <td>${colab.COLABORADOR || 'N/A'}</td>
+                        <td>${lat.toFixed(6)}</td>
+                        <td>${lon.toFixed(6)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>Total:</strong> ${colaboradores.length} colaborador(es)</p>
+            `;
+            
+            tabelaColaboradores.innerHTML = html;
         }
 
         // Função para limpar o mapa
@@ -876,18 +642,20 @@
             
             // Resetar bounds dos colaboradores
             colaboradoresBounds = L.latLngBounds();
-            colaboradoresAdicionados = false;
+            
+            // Limpar tabela de colaboradores
+            tabelaColaboradores.innerHTML = '<p class="text-center text-muted">Nenhum colaborador carregado ainda.</p>';
         }
 
         // Função para mostrar/ocultar loading
         function mostrarLoading(mostrar, mensagem = '') {
             if (mostrar) {
-                loadingDiv.classList.add('active');
+                loadingDiv.style.display = 'flex';
                 if (mensagem) {
                     loadingDiv.querySelector('p').textContent = mensagem;
                 }
             } else {
-                loadingDiv.classList.remove('active');
+                loadingDiv.style.display = 'none';
             }
         }
 
@@ -896,37 +664,13 @@
             statusDiv.textContent = mensagem;
             
             // Cores baseadas no tipo de mensagem
-            switch (tipo) {
-                case 'error':
-                    statusDiv.style.backgroundColor = '#ffebee';
-                    statusDiv.style.color = '#c62828';
-                    break;
-                case 'warning':
-                    statusDiv.style.backgroundColor = '#fff8e1';
-                    statusDiv.style.color = '#f57c00';
-                    break;
-                default:
-                    statusDiv.style.backgroundColor = '#e3f2fd';
-                    statusDiv.style.color = '#1565c0';
+            if (tipo === 'error') {
+                statusDiv.style.color = '#dc3545';
+            } else if (tipo === 'warning') {
+                statusDiv.style.color = '#ffc107';
+            } else {
+                statusDiv.style.color = '#0d6efd';
             }
-        }
-
-        // Função para adicionar logs de debug
-        function debugLog(mensagem) {
-            const now = new Date();
-            const timestamp = now.toTimeString().split(' ')[0];
-            const logEntry = document.createElement('div');
-            logEntry.textContent = `[${timestamp}] ${mensagem}`;
-            debugContent.appendChild(logEntry);
-            console.log(mensagem);
-            
-            // Auto-scroll para o final
-            debugContent.scrollTop = debugContent.scrollHeight;
-        }
-
-        // Função para mostrar/ocultar painel de debug
-        function toggleDebug() {
-            debugPanel.classList.toggle('active');
         }
     </script>
 </body>
