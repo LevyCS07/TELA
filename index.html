@@ -104,6 +104,14 @@
         .cluster-marker {
             background-color: #FF9800;
         }
+        
+        .red-marker {
+            background-color: #dc3545;
+        }
+        
+        .yellow-marker {
+            background-color: #ffc107;
+        }
 
         /* Estilo personalizado para os marcadores de colaborador */
         .colaborador-marker {
@@ -113,6 +121,25 @@
             text-align: center;
             line-height: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .perimetro-circle {
+            fill-opacity: 0.2;
+            stroke: red;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+        }
+        
+        .tab-content {
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background-color: #f8f9fa;
+            border-bottom-color: #f8f9fa;
         }
     </style>
 </head>
@@ -132,23 +159,54 @@
                         <i class="fas fa-cogs"></i> Controles
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label for="turno" class="form-label"><i class="fas fa-clock"></i> Turno:</label>
-                            <select id="turno" class="form-select">
-                                <option value="">Carregando turnos...</option>
-                            </select>
-                        </div>
+                        <ul class="nav nav-tabs" id="myTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="gerar-tab" data-bs-toggle="tab" data-bs-target="#gerar" type="button" role="tab" aria-controls="gerar" aria-selected="true">Gerar Mapa</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="perimetro-tab" data-bs-toggle="tab" data-bs-target="#perimetro" type="button" role="tab" aria-controls="perimetro" aria-selected="false">Checar Perímetro</button>
+                            </li>
+                        </ul>
                         
-                        <div class="mb-3">
-                            <label for="rota" class="form-label"><i class="fas fa-route"></i> Rota:</label>
-                            <select id="rota" class="form-select" disabled>
-                                <option value="">Selecione um turno primeiro</option>
-                            </select>
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="gerar" role="tabpanel" aria-labelledby="gerar-tab">
+                                <div class="mb-3 mt-3">
+                                    <label for="turno" class="form-label"><i class="fas fa-clock"></i> Turno:</label>
+                                    <select id="turno" class="form-select">
+                                        <option value="">Carregando turnos...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="rota" class="form-label"><i class="fas fa-route"></i> Rota:</label>
+                                    <select id="rota" class="form-select" disabled>
+                                        <option value="">Selecione um turno primeiro</option>
+                                    </select>
+                                </div>
+                                
+                                <button id="gerar-mapa" class="btn btn-success w-100" disabled>
+                                    <i class="fas fa-map"></i> Gerar Mapa
+                                </button>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="perimetro" role="tabpanel" aria-labelledby="perimetro-tab">
+                                <div class="mb-3 mt-3">
+                                    <label for="turno-perimetro" class="form-label"><i class="fas fa-clock"></i> Turno para verificação:</label>
+                                    <select id="turno-perimetro" class="form-select">
+                                        <option value="">Carregando turnos...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="raio" class="form-label"><i class="fas fa-ruler"></i> Raio do perímetro (metros):</label>
+                                    <input type="number" id="raio" class="form-control" value="314" min="50" max="1000">
+                                </div>
+                                
+                                <button id="checar-perimetro" class="btn btn-warning w-100">
+                                    <i class="fas fa-search"></i> Checar Perímetro
+                                </button>
+                            </div>
                         </div>
-                        
-                        <button id="gerar-mapa" class="btn btn-success w-100" disabled>
-                            <i class="fas fa-map"></i> Gerar Mapa
-                        </button>
                     </div>
                 </div>
                 
@@ -157,7 +215,7 @@
                         <i class="fas fa-info-circle"></i> Status
                     </div>
                     <div class="card-body">
-                        <div id="status">Pronto para carregar dados. Selecione um turno e uma rota.</div>
+                        <div id="status">Pronto para carregar dados. Selecione uma opção.</div>
                     </div>
                 </div>
             </div>
@@ -188,6 +246,17 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card" id="relatorio-perimetro-card" style="display: none;">
+                    <div class="card-header bg-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Relatório de Colaboradores Fora do Perímetro
+                    </div>
+                    <div class="card-body">
+                        <div id="relatorio-perimetro">
+                            <p class="text-center text-muted">Nenhuma verificação realizada ainda.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -205,6 +274,14 @@
         <div class="legend-item">
             <div class="legend-color cluster-marker"></div>
             <span>Agrupamento</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color yellow-marker"></div>
+            <span>Fora do perímetro</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color red-marker"></div>
+            <span>Perímetro (314m)</span>
         </div>
     </div>
 
@@ -224,10 +301,15 @@
         // Elementos DOM
         const turnoSelect = document.getElementById('turno');
         const rotaSelect = document.getElementById('rota');
+        const turnoPerimetroSelect = document.getElementById('turno-perimetro');
+        const raioInput = document.getElementById('raio');
         const gerarMapaBtn = document.getElementById('gerar-mapa');
+        const checarPerimetroBtn = document.getElementById('checar-perimetro');
         const loadingDiv = document.getElementById('loading');
         const statusDiv = document.getElementById('status');
         const tabelaColaboradores = document.getElementById('tabela-colaboradores');
+        const relatorioPerimetroCard = document.getElementById('relatorio-perimetro-card');
+        const relatorioPerimetro = document.getElementById('relatorio-perimetro');
         const mapDiv = document.getElementById('map');
         
         // Variáveis globais
@@ -237,6 +319,8 @@
         let markerCluster = null;
         let colaboradoresData = [];
         let colaboradoresBounds = null;
+        let pontosKML = []; // Para armazenar pontos dos KMLs
+        let circulosPerimetro = []; // Para armazenar círculos de perímetro
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
@@ -257,14 +341,16 @@
                 // Carregar dados de turnos
                 turnosData = await listarTurnosGitHub();
                 
-                // Popular dropdown de turnos
+                // Popular dropdowns de turnos
                 popularSelect(turnoSelect, Object.keys(turnosData));
+                popularSelect(turnoPerimetroSelect, Object.keys(turnosData));
                 
                 // Configurar event listeners
                 turnoSelect.addEventListener('change', atualizarRotasDropdown);
                 gerarMapaBtn.addEventListener('click', gerarMapa);
+                checarPerimetroBtn.addEventListener('click', checarPerimetro);
                 
-                mostrarStatus('Selecione um turno e uma rota para visualizar no mapa');
+                mostrarStatus('Pronto para carregar dados. Selecione uma opção.');
             } catch (error) {
                 console.error('Erro na inicialização:', error);
                 mostrarStatus('Erro ao carregar dados. Verifique o console para detalhes.', 'error');
@@ -466,6 +552,7 @@
                 // Extrair Placemarks
                 const placemarks = kmlDoc.getElementsByTagName('Placemark');
                 const bounds = [];
+                pontosKML = []; // Resetar pontos KML
                 
                 for (const placemark of placemarks) {
                     // Processar LineStrings (rotas)
@@ -502,6 +589,9 @@
                             
                             // Adicionar coordenada aos bounds
                             bounds.push([lat, lon]);
+                            
+                            // Armazenar ponto KML para verificação de perímetro
+                            pontosKML.push([lat, lon]);
                         }
                     }
                 }
@@ -524,6 +614,17 @@
                 className: 'colaborador-marker',
                 iconSize: [24, 24],
                 iconAnchor: [12, 12]
+            });
+        }
+
+        // Função para criar ícone amarelo personalizado (fora do perímetro)
+        function criarIconeAmarelo() {
+            return L.divIcon({
+                html: '<i class="fas fa-user" style="color: white; font-size: 12px;"></i>',
+                className: 'colaborador-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+                style: 'background-color: #ffc107;' // Amarelo
             });
         }
 
@@ -650,7 +751,269 @@
             tabelaColaboradores.innerHTML = html;
         }
 
-        // Função para limpar o mapa
+        // Função para verificar se um ponto está dentro de algum perímetro
+        function estaDentroDoPerimetro(lat, lon, pontos, raio) {
+            for (const ponto of pontos) {
+                const distancia = map.distance([lat, lon], ponto);
+                if (distancia <= raio) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Função para checar perímetro
+        async function checarPerimetro() {
+            const turno = turnoPerimetroSelect.value;
+            const raio = parseInt(raioInput.value) || 314;
+            
+            if (!turno) {
+                mostrarStatus('Selecione um turno para verificar o perímetro', 'warning');
+                return;
+            }
+            
+            mostrarLoading(true, 'Verificando perímetro...');
+            
+            try {
+                // Limpar layers anteriores, mas manter os colaboradores
+                limparMapaExcetoColaboradores();
+                
+                // Carregar todos os KMLs do turno selecionado
+                const rotas = turnosData[turno] || [];
+                pontosKML = []; // Resetar pontos KML
+                
+                for (const rota of rotas) {
+                    await carregarKMLPontosApenas(turno, rota);
+                }
+                
+                // Desenhar círculos de perímetro ao redor de cada ponto KML
+                desenharCirculosPerimetro(raio);
+                
+                // Verificar quais colaboradores estão fora do perímetro
+                const colaboradoresForaPerimetro = verificarColaboradoresForaPerimetro(raio);
+                
+                // Exibir relatório
+                exibirRelatorioPerimetro(colaboradoresForaPerimetro);
+                
+                // Destacar colaboradores fora do perímetro
+                destacarColaboradoresForaPerimetro(colaboradoresForaPerimetro);
+                
+                mostrarStatus(`Verificação de perímetro concluída. ${colaboradoresForaPerimetro.length} colaborador(es) fora do perímetro.`);
+                
+            } catch (error) {
+                console.error('Erro ao verificar perímetro:', error);
+                mostrarStatus('Erro ao verificar perímetro. Verifique o console para detalhes.', 'error');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // Função para carregar apenas os pontos dos KMLs (sem exibir no mapa)
+        async function carregarKMLPontosApenas(turno, rota) {
+            try {
+                const kmlUrl = `${BASE_URL}${encodeURIComponent(turno)}/${encodeURIComponent(rota)}`;
+                const response = await fetch(kmlUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ao carregar KML: ${response.status}`);
+                }
+                
+                const kmlText = await response.text();
+                
+                // Criar um parser para processar o KML
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+                
+                // Extrair Points (pontos de interesse)
+                const points = kmlDoc.getElementsByTagName('Point');
+                for (const point of points) {
+                    const coordsElement = point.getElementsByTagName('coordinates')[0];
+                    if (coordsElement) {
+                        const coordsText = coordsElement.textContent.trim();
+                        const [lon, lat] = coordsText.split(',').map(Number);
+                        
+                        // Armazenar ponto KML para verificação de perímetro
+                        pontosKML.push([lat, lon]);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Erro ao processar KML:', error);
+            }
+        }
+
+        // Função para desenhar círculos de perímetro
+        function desenharCirculosPerimetro(raio) {
+            // Limpar círculos anteriores
+            circulosPerimetro.forEach(circulo => map.removeLayer(circulo));
+            circulosPerimetro = [];
+            
+            // Desenhar círculos ao redor de cada ponto KML
+            pontosKML.forEach(ponto => {
+                const circulo = L.circle(ponto, {
+                    radius: raio,
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.2,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                
+                circulosPerimetro.push(circulo);
+                currentLayers.push(circulo);
+            });
+        }
+
+        // Função para verificar quais colaboradores estão fora do perímetro
+        function verificarColaboradoresForaPerimetro(raio) {
+            const colaboradoresForaPerimetro = [];
+            
+            colaboradoresData.forEach(colab => {
+                const lat = converterCoordenada(colab.LAT || 0);
+                const lon = converterCoordenada(colab.LONG || 0);
+                
+                // Verificar se as coordenadas são válidas
+                if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+                    return;
+                }
+                
+                // Verificar se o colaborador está fora de todos os perímetros
+                if (!estaDentroDoPerimetro(lat, lon, pontosKML, raio)) {
+                    colaboradoresForaPerimetro.push(colab);
+                }
+            });
+            
+            return colaboradoresForaPerimetro;
+        }
+
+        // Função para destacar colaboradores fora do perímetro
+        function destacarColaboradoresForaPerimetro(colaboradoresForaPerimetro) {
+            // Remover cluster atual
+            if (markerCluster) {
+                map.removeLayer(markerCluster);
+            }
+            
+            // Criar novo cluster
+            markerCluster = L.markerClusterGroup({
+                maxClusterRadius: 40,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: true,
+                zoomToBoundsOnClick: true
+            });
+            
+            // Adicionar todos os colaboradores ao mapa
+            colaboradoresData.forEach(colab => {
+                const lat = converterCoordenada(colab.LAT || 0);
+                const lon = converterCoordenada(colab.LONG || 0);
+                
+                // Verificar se as coordenadas são válidas
+                if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+                    return;
+                }
+                
+                // Verificar se está fora do perímetro
+                const estaFora = colaboradoresForaPerimetro.some(c => 
+                    c.COLABORADOR === colab.COLABORADOR && 
+                    converterCoordenada(c.LAT) === lat && 
+                    converterCoordenada(c.LONG) === lon
+                );
+                
+                // Criar marcador com cor apropriada
+                const marker = L.marker([lat, lon], {
+                    icon: estaFora ? criarIconeAmarelo() : criarIconeVerde()
+                });
+                
+                // Popup com informações do colaborador
+                const nome = colab.COLABORADOR || 'N/A';
+                const status = estaFora ? '<span style="color: red;">FORA DO PERÍMETRO</span>' : '<span style="color: green;">DENTRO DO PERÍMETRO</span>';
+                const popupContent = `
+                    <div class="info-content">
+                        <h5>${nome}</h5>
+                        <p><strong>Rota:</strong> ${colab.ROTA || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${status}</p>
+                        <p><strong>Coordenadas:</strong> ${lat.toFixed(6)}, ${lon.toFixed(6)}</p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                markerCluster.addLayer(marker);
+            });
+            
+            // Adicionar cluster ao mapa
+            map.addLayer(markerCluster);
+        }
+
+        // Função para exibir relatório de colaboradores fora do perímetro
+        function exibirRelatorioPerimetro(colaboradoresForaPerimetro) {
+            if (colaboradoresForaPerimetro.length === 0) {
+                relatorioPerimetro.innerHTML = '<p class="text-center text-success"><i class="fas fa-check-circle"></i> Todos os colaboradores estão dentro do perímetro!</p>';
+                relatorioPerimetroCard.style.display = 'block';
+                return;
+            }
+            
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Rota</th>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            colaboradoresForaPerimetro.forEach(colab => {
+                const lat = converterCoordenada(colab.LAT || 0);
+                const lon = converterCoordenada(colab.LONG || 0);
+                
+                html += `
+                    <tr>
+                        <td>${colab.COLABORADOR || 'N/A'}</td>
+                        <td>${colab.ROTA || 'N/A'}</td>
+                        <td>${lat.toFixed(6)}</td>
+                        <td>${lon.toFixed(6)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-2"><strong>Total:</strong> ${colaboradoresForaPerimetro.length} colaborador(es) fora do perímetro</p>
+            `;
+            
+            relatorioPerimetro.innerHTML = html;
+            relatorioPerimetroCard.style.display = 'block';
+        }
+
+        // Função para limpar o mapa (exceto colaboradores)
+        function limparMapaExcetoColaboradores() {
+            // Remover layers anteriores (exceto cluster de colaboradores)
+            currentLayers.forEach(layer => {
+                // Não remover o markerCluster
+                if (layer !== markerCluster) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Manter apenas o markerCluster na lista de layers
+            currentLayers = markerCluster ? [markerCluster] : [];
+            
+            // Limpar círculos de perímetro
+            circulosPerimetro.forEach(circulo => map.removeLayer(circulo));
+            circulosPerimetro = [];
+            
+            // Limpar pontos KML
+            pontosKML = [];
+            
+            // Limpar tabela de colaboradores
+            tabelaColaboradores.innerHTML = '<p class="text-center text-muted">Nenhum colaborador carregado ainda.</p>';
+        }
+
+        // Função para limpar o mapa completamente
         function limparMapa() {
             // Remover layers anteriores
             currentLayers.forEach(layer => {
@@ -664,11 +1027,21 @@
                 markerCluster = null;
             }
             
+            // Limpar círculos de perímetro
+            circulosPerimetro.forEach(circulo => map.removeLayer(circulo));
+            circulosPerimetro = [];
+            
+            // Limpar pontos KML
+            pontosKML = [];
+            
             // Resetar bounds dos colaboradores
             colaboradoresBounds = L.latLngBounds();
             
             // Limpar tabela de colaboradores
             tabelaColaboradores.innerHTML = '<p class="text-center text-muted">Nenhum colaborador carregado ainda.</p>';
+            
+            // Ocultar relatório de perímetro
+            relatorioPerimetroCard.style.display = 'none';
         }
 
         // Função para mostrar/ocultar loading
