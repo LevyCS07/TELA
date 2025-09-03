@@ -141,6 +141,10 @@
             background-color: #f8f9fa;
             border-bottom-color: #f8f9fa;
         }
+        
+        .form-check {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -195,6 +199,20 @@
                                     <select id="turno-perimetro" class="form-select">
                                         <option value="">Carregando turnos...</option>
                                     </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="rota-perimetro" class="form-label"><i class="fas fa-route"></i> Rota específica (opcional):</label>
+                                    <select id="rota-perimetro" class="form-select" disabled>
+                                        <option value="">Selecione um turno primeiro</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="todas-rotas" checked>
+                                    <label class="form-check-label" for="todas-rotas">
+                                        Verificar todas as rotas do turno
+                                    </label>
                                 </div>
                                 
                                 <div class="mb-3">
@@ -302,6 +320,8 @@
         const turnoSelect = document.getElementById('turno');
         const rotaSelect = document.getElementById('rota');
         const turnoPerimetroSelect = document.getElementById('turno-perimetro');
+        const rotaPerimetroSelect = document.getElementById('rota-perimetro');
+        const todasRotasCheckbox = document.getElementById('todas-rotas');
         const raioInput = document.getElementById('raio');
         const gerarMapaBtn = document.getElementById('gerar-mapa');
         const checarPerimetroBtn = document.getElementById('checar-perimetro');
@@ -321,6 +341,7 @@
         let colaboradoresBounds = null;
         let pontosKML = []; // Para armazenar pontos dos KMLs
         let circulosPerimetro = []; // Para armazenar círculos de perímetro
+        let rotasCarregadas = []; // Para armazenar quais rotas foram carregadas
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
@@ -346,7 +367,18 @@
                 popularSelect(turnoPerimetroSelect, Object.keys(turnosData));
                 
                 // Configurar event listeners
-                turnoSelect.addEventListener('change', atualizarRotasDropdown);
+                turnoSelect.addEventListener('change', () => {
+                    atualizarRotasDropdown(turnoSelect, rotaSelect);
+                });
+                
+                turnoPerimetroSelect.addEventListener('change', () => {
+                    atualizarRotasDropdown(turnoPerimetroSelect, rotaPerimetroSelect);
+                });
+                
+                todasRotasCheckbox.addEventListener('change', () => {
+                    rotaPerimetroSelect.disabled = todasRotasCheckbox.checked;
+                });
+                
                 gerarMapaBtn.addEventListener('click', gerarMapa);
                 checarPerimetroBtn.addEventListener('click', checarPerimetro);
                 
@@ -361,7 +393,7 @@
 
         // Função para carregar dados de colaboradores do CSV
         async function carregarColaboradoresCSV() {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) {
                 Papa.parse("COORDENADAS.csv", {
                     download: true,
                     header: true,
@@ -449,27 +481,33 @@
         }
 
         // Função para atualizar o dropdown de rotas
-        function atualizarRotasDropdown() {
-            const turnoSelecionado = turnoSelect.value;
+        function atualizarRotasDropdown(turnoSelectElement, rotaSelectElement) {
+            const turnoSelecionado = turnoSelectElement.value;
             
             if (!turnoSelecionado) {
-                rotaSelect.innerHTML = '<option value="">Selecione um turno</option>';
-                rotaSelect.disabled = true;
-                gerarMapaBtn.disabled = true;
+                rotaSelectElement.innerHTML = '<option value="">Selecione um turno</option>';
+                rotaSelectElement.disabled = true;
+                if (rotaSelectElement === rotaSelect) {
+                    gerarMapaBtn.disabled = true;
+                }
                 return;
             }
             
             const rotas = turnosData[turnoSelecionado] || [];
             
             if (rotas.length === 0) {
-                rotaSelect.innerHTML = '<option value="">Nenhuma rota encontrada</option>';
-                rotaSelect.disabled = true;
-                gerarMapaBtn.disabled = true;
+                rotaSelectElement.innerHTML = '<option value="">Nenhuma rota encontrada</option>';
+                rotaSelectElement.disabled = true;
+                if (rotaSelectElement === rotaSelect) {
+                    gerarMapaBtn.disabled = true;
+                }
                 mostrarStatus('Nenhuma rota KML encontrada para o turno selecionado', 'warning');
             } else {
-                popularSelect(rotaSelect, rotas);
-                rotaSelect.disabled = false;
-                gerarMapaBtn.disabled = false;
+                popularSelect(rotaSelectElement, rotas);
+                rotaSelectElement.disabled = false;
+                if (rotaSelectElement === rotaSelect) {
+                    gerarMapaBtn.disabled = false;
+                }
                 mostrarStatus(`${rotas.length} rota(s) encontrada(s). Selecione uma para visualizar.`);
             }
         }
@@ -484,6 +522,14 @@
                 option.textContent = 'Nenhuma opção disponível';
                 selectElement.appendChild(option);
                 return;
+            }
+            
+            // Adicionar opção para todas as rotas (apenas no seletor de perímetro)
+            if (selectElement === rotaPerimetroSelect) {
+                const todasOption = document.createElement('option');
+                todasOption.value = '';
+                todasOption.textContent = 'Todas as rotas';
+                selectElement.appendChild(todasOption);
             }
             
             options.forEach(opt => {
@@ -553,6 +599,7 @@
                 const placemarks = kmlDoc.getElementsByTagName('Placemark');
                 const bounds = [];
                 pontosKML = []; // Resetar pontos KML
+                rotasCarregadas = [rota]; // Armazenar rota carregada
                 
                 for (const placemark of placemarks) {
                     // Processar LineStrings (rotas)
@@ -591,7 +638,11 @@
                             bounds.push([lat, lon]);
                             
                             // Armazenar ponto KML para verificação de perímetro
-                            pontosKML.push([lat, lon]);
+                            pontosKML.push({
+                                lat: lat,
+                                lon: lon,
+                                rota: rota
+                            });
                         }
                     }
                 }
@@ -754,7 +805,7 @@
         // Função para verificar se um ponto está dentro de algum perímetro
         function estaDentroDoPerimetro(lat, lon, pontos, raio) {
             for (const ponto of pontos) {
-                const distancia = map.distance([lat, lon], ponto);
+                const distancia = map.distance([lat, lon], [ponto.lat, ponto.lon]);
                 if (distancia <= raio) {
                     return true;
                 }
@@ -765,6 +816,8 @@
         // Função para checar perímetro
         async function checarPerimetro() {
             const turno = turnoPerimetroSelect.value;
+            const rotaEspecifica = rotaPerimetroSelect.value;
+            const verificarTodasRotas = todasRotasCheckbox.checked || !rotaEspecifica;
             const raio = parseInt(raioInput.value) || 314;
             
             if (!turno) {
@@ -778,19 +831,21 @@
                 // Limpar layers anteriores, mas manter os colaboradores
                 limparMapaExcetoColaboradores();
                 
-                // Carregar todos os KMLs do turno selecionado
-                const rotas = turnosData[turno] || [];
+                // Carregar KMLs do turno selecionado
+                const rotas = verificarTodasRotas ? turnosData[turno] || [] : [rotaEspecifica];
                 pontosKML = []; // Resetar pontos KML
+                rotasCarregadas = []; // Resetar rotas carregadas
                 
                 for (const rota of rotas) {
                     await carregarKMLPontosApenas(turno, rota);
+                    rotasCarregadas.push(rota);
                 }
                 
                 // Desenhar círculos de perímetro ao redor de cada ponto KML
                 desenharCirculosPerimetro(raio);
                 
                 // Verificar quais colaboradores estão fora do perímetro
-                const colaboradoresForaPerimetro = verificarColaboradoresForaPerimetro(raio);
+                const colaboradoresForaPerimetro = verificarColaboradoresForaPerimetro(raio, verificarTodasRotas ? null : rotaEspecifica);
                 
                 // Exibir relatório
                 exibirRelatorioPerimetro(colaboradoresForaPerimetro);
@@ -824,18 +879,46 @@
                 const parser = new DOMParser();
                 const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
                 
-                // Extrair Points (pontos de interesse)
-                const points = kmlDoc.getElementsByTagName('Point');
-                for (const point of points) {
-                    const coordsElement = point.getElementsByTagName('coordinates')[0];
-                    if (coordsElement) {
-                        const coordsText = coordsElement.textContent.trim();
-                        const [lon, lat] = coordsText.split(',').map(Number);
-                        
-                        // Armazenar ponto KML para verificação de perímetro
-                        pontosKML.push([lat, lon]);
+                // Extrair LineStrings (rotas) e Points (pontos de interesse)
+                const placemarks = kmlDoc.getElementsByTagName('Placemark');
+                
+                for (const placemark of placemarks) {
+                    // Processar LineStrings (rotas)
+                    const lineStrings = placemark.getElementsByTagName('LineString');
+                    for (const lineString of lineStrings) {
+                        const coordsElement = lineString.getElementsByTagName('coordinates')[0];
+                        if (coordsElement) {
+                            const coordsText = coordsElement.textContent.trim();
+                            const coords = coordsText.split(/\s+/).map(coord => {
+                                const [lon, lat] = coord.split(',').map(Number);
+                                return {lat: lat, lon: lon, rota: rota};
+                            });
+                            
+                            // Adicionar pontos da rota ao array
+                            pontosKML = pontosKML.concat(coords);
+                        }
+                    }
+                    
+                    // Processar Points (pontos de interesse)
+                    const points = placemark.getElementsByTagName('Point');
+                    for (const point of points) {
+                        const coordsElement = point.getElementsByTagName('coordinates')[0];
+                        if (coordsElement) {
+                            const coordsText = coordsElement.textContent.trim();
+                            const [lon, lat] = coordsText.split(',').map(Number);
+                            
+                            // Armazenar ponto KML para verificação de perímetro
+                            pontosKML.push({
+                                lat: lat,
+                                lon: lon,
+                                rota: rota
+                            });
+                        }
                     }
                 }
+                
+                // Adicionar também a rota visualmente no mapa
+                await carregarKML(turno, rota);
                 
             } catch (error) {
                 console.error('Erro ao processar KML:', error);
@@ -850,7 +933,7 @@
             
             // Desenhar círculos ao redor de cada ponto KML
             pontosKML.forEach(ponto => {
-                const circulo = L.circle(ponto, {
+                const circulo = L.circle([ponto.lat, ponto.lon], {
                     radius: raio,
                     color: 'red',
                     fillColor: '#f03',
@@ -858,16 +941,28 @@
                     dashArray: '5, 5'
                 }).addTo(map);
                 
+                // Adicionar popup com informação da rota
+                circulo.bindPopup(`<strong>Rota:</strong> ${ponto.rota.replace('.kml', '')}`);
+                
                 circulosPerimetro.push(circulo);
                 currentLayers.push(circulo);
             });
         }
 
         // Função para verificar quais colaboradores estão fora do perímetro
-        function verificarColaboradoresForaPerimetro(raio) {
+        function verificarColaboradoresForaPerimetro(raio, rotaEspecifica) {
             const colaboradoresForaPerimetro = [];
             
-            colaboradoresData.forEach(colab => {
+            // Filtrar colaboradores por rota se especificado
+            const colaboradoresParaVerificar = rotaEspecifica 
+                ? colaboradoresData.filter(colab => {
+                    const colabRota = String(colab.ROTA || '').trim();
+                    const rotaBase = rotaEspecifica.replace('.kml', '').replace('.KML', '').trim();
+                    return colabRota === rotaBase;
+                })
+                : colaboradoresData;
+            
+            colaboradoresParaVerificar.forEach(colab => {
                 const lat = converterCoordenada(colab.LAT || 0);
                 const lon = converterCoordenada(colab.LONG || 0);
                 
@@ -876,8 +971,13 @@
                     return;
                 }
                 
+                // Filtrar pontos KML por rota se especificado
+                const pontosParaVerificar = rotaEspecifica
+                    ? pontosKML.filter(ponto => ponto.rota === rotaEspecifica)
+                    : pontosKML;
+                
                 // Verificar se o colaborador está fora de todos os perímetros
-                if (!estaDentroDoPerimetro(lat, lon, pontosKML, raio)) {
+                if (!estaDentroDoPerimetro(lat, lon, pontosParaVerificar, raio)) {
                     colaboradoresForaPerimetro.push(colab);
                 }
             });
