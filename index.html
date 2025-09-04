@@ -193,6 +193,32 @@
             height: 100%;
             border-radius: 5px;
         }
+        
+        .direction-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .direction-btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .direction-btn.active {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+            font-weight: bold;
+        }
+        
+        .direction-btn:hover {
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
@@ -222,7 +248,16 @@
                         
                         <div class="tab-content" id="myTabContent">
                             <div class="tab-pane fade show active" id="gerar" role="tabpanel" aria-labelledby="gerar-tab">
-                                <div class="mb-3 mt-3">
+                                <div class="direction-buttons mb-3 mt-3">
+                                    <div class="direction-btn active" id="btn-ida">
+                                        <i class="fas fa-arrow-right"></i> IDA
+                                    </div>
+                                    <div class="direction-btn" id="btn-volta">
+                                        <i class="fas fa-arrow-left"></i> VOLTA
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
                                     <label for="turno" class="form-label"><i class="fas fa-clock"></i> Turno:</label>
                                     <select id="turno" class="form-select">
                                         <option value="">Carregando turnos...</option>
@@ -247,7 +282,16 @@
                             </div>
                             
                             <div class="tab-pane fade" id="perimetro" role="tabpanel" aria-labelledby="perimetro-tab">
-                                <div class="mb-3 mt-3">
+                                <div class="direction-buttons mb-3 mt-3">
+                                    <div class="direction-btn active" id="btn-ida-perimetro">
+                                        <i class="fas fa-arrow-right"></i> IDA
+                                    </div>
+                                    <div class="direction-btn" id="btn-volta-perimetro">
+                                        <i class="fas fa-arrow-left"></i> VOLTA
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
                                     <label for="turno-perimetro" class="form-label"><i class="fas fa-clock"></i> Turno para verificação:</label>
                                     <select id="turno-perimetro" class="form-select">
                                         <option value="">Carregando turnos...</option>
@@ -406,6 +450,10 @@
         const mapDiv = document.getElementById('map');
         const routeInfoContainer = document.getElementById('route-info-container');
         const routeDetails = document.getElementById('route-details');
+        const btnIda = document.getElementById('btn-ida');
+        const btnVolta = document.getElementById('btn-volta');
+        const btnIdaPerimetro = document.getElementById('btn-ida-perimetro');
+        const btnVoltaPerimetro = document.getElementById('btn-volta-perimetro');
         
         // Variáveis globais
         let map = null;
@@ -421,6 +469,8 @@
         let empresaPolygon = null; // Para armazenar o polígono da empresa
         let colaboradoresNaEmpresa = []; // Para armazenar colaboradores dentro da empresa
         let routePolylines = {}; // Para armazenar as polylines das rotas por nome
+        let direcaoSelecionada = 'IDA'; // 'IDA' ou 'VOLTA'
+        let direcaoPerimetroSelecionada = 'IDA'; // 'IDA' ou 'VOLTA'
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
@@ -476,6 +526,27 @@
                     gerarMapaBtn.disabled = $(this).val().length === 0;
                 });
                 
+                // Event listeners para os botões de direção
+                btnIda.addEventListener('click', () => {
+                    selecionarDirecao('IDA', btnIda, btnVolta);
+                    atualizarRotasDropdown(turnoSelect, rotaSelect);
+                });
+                
+                btnVolta.addEventListener('click', () => {
+                    selecionarDirecao('VOLTA', btnIda, btnVolta);
+                    atualizarRotasDropdown(turnoSelect, rotaSelect);
+                });
+                
+                btnIdaPerimetro.addEventListener('click', () => {
+                    selecionarDirecaoPerimetro('IDA', btnIdaPerimetro, btnVoltaPerimetro);
+                    atualizarRotasDropdown(turnoPerimetroSelect, rotaPerimetroSelect);
+                });
+                
+                btnVoltaPerimetro.addEventListener('click', () => {
+                    selecionarDirecaoPerimetro('VOLTA', btnIdaPerimetro, btnVoltaPerimetro);
+                    atualizarRotasDropdown(turnoPerimetroSelect, rotaPerimetroSelect);
+                });
+                
                 gerarMapaBtn.addEventListener('click', gerarMapa);
                 checarPerimetroBtn.addEventListener('click', checarPerimetro);
                 
@@ -486,6 +557,20 @@
             } finally {
                 mostrarLoading(false);
             }
+        }
+
+        // Função para selecionar direção (IDA/VOLTA)
+        function selecionarDirecao(direcao, btnAtivo, btnInativo) {
+            direcaoSelecionada = direcao;
+            btnAtivo.classList.add('active');
+            btnInativo.classList.remove('active');
+        }
+
+        // Função para selecionar direção no painel de perímetro (IDA/VOLTA)
+        function selecionarDirecaoPerimetro(direcao, btnAtivo, btnInativo) {
+            direcaoPerimetroSelecionada = direcao;
+            btnAtivo.classList.add('active');
+            btnInativo.classList.remove('active');
         }
 
         // Função para carregar dados de rotas do CSV
@@ -513,7 +598,7 @@
 
         // Função para carregar dados de colaboradores do CSV
         async function carregarColaboradoresCSV() {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) {
                 Papa.parse("COORDENADAS.csv", {
                     download: true,
                     header: true,
@@ -638,6 +723,8 @@
         // Função para atualizar o dropdown de rotas
         function atualizarRotasDropdown(turnoSelectElement, rotaSelectElement) {
             const turnoSelecionado = turnoSelectElement.value;
+            const isPerimetro = turnoSelectElement === turnoPerimetroSelect;
+            const direcao = isPerimetro ? direcaoPerimetroSelecionada : direcaoSelecionada;
             
             if (!turnoSelecionado) {
                 rotaSelectElement.innerHTML = '<option value="">Selecione um turno</option>';
@@ -648,7 +735,24 @@
                 return;
             }
             
-            const rotas = turnosData[turnoSelecionado] || [];
+            // Obter rotas baseadas na direção selecionada
+            let rotas = [];
+            if (direcao === 'IDA') {
+                // Para IDA, mostrar todas as rotas (incluindo as da pasta ADM_IDA)
+                rotas = turnosData[turnoSelecionado] || [];
+            } else {
+                // Para VOLTA, mostrar apenas rotas da pasta ADM_VOLTA
+                // Primeiro, verificar se existe a pasta ADM_VOLTA
+                if (turnosData['ADM_VOLTA']) {
+                    rotas = turnosData['ADM_VOLTA'];
+                } else {
+                    // Se não existir pasta específica, filtrar por nome de arquivo
+                    rotas = (turnosData[turnoSelecionado] || []).filter(rota => 
+                        rota.toLowerCase().includes('volta') || 
+                        rota.toLowerCase().includes('retorno')
+                    );
+                }
+            }
             
             if (rotas.length === 0) {
                 rotaSelectElement.innerHTML = '<option value="">Nenhuma rota encontrada</option>';
@@ -656,14 +760,14 @@
                 if (rotaSelectElement === rotaSelect) {
                     gerarMapaBtn.disabled = true;
                 }
-                mostrarStatus('Nenhuma rota KML encontrada para o turno selecionado', 'warning');
+                mostrarStatus(`Nenhuma rota ${direcao} encontrada para o turno selecionado`, 'warning');
             } else {
                 popularSelectMultiplo(rotaSelectElement, rotas);
                 rotaSelectElement.disabled = false;
                 if (rotaSelectElement === rotaSelect) {
                     gerarMapaBtn.disabled = false;
                 }
-                mostrarStatus(`${rotas.length} rota(s) encontrada(s). Selecione uma para visualizar.`);
+                mostrarStatus(`${rotas.length} rota(s) ${direcao} encontrada(s). Selecione uma para visualizar.`);
             }
         }
 
@@ -736,9 +840,26 @@
                 const rotaBase = rotaKml.replace('.kml', '').replace('.KML', '').trim();
                 
                 // Encontrar informações da rota no arquivo ROTAS.csv
-                const infoRota = rotasData.find(r => 
+                // Primeiro, tentar encontrar exatamente pelo nome
+                let infoRota = rotasData.find(r => 
                     String(r.ROTA || '').trim() === rotaBase
                 );
+                
+                // Se não encontrar, tentar encontrar por correspondência parcial
+                if (!infoRota) {
+                    infoRota = rotasData.find(r => 
+                        String(r.ROTA || '').trim().includes(rotaBase) ||
+                        rotaBase.includes(String(r.ROTA || '').trim())
+                    );
+                }
+                
+                // Se ainda não encontrar, tentar adicionar a direção (IDA/VOLTA)
+                if (!infoRota) {
+                    infoRota = rotasData.find(r => 
+                        String(r.ROTA || '').trim().includes(rotaBase + ' ' + direcaoSelecionada) ||
+                        String(r.ROTA || '').trim().includes(rotaBase + ' ' + direcaoSelecionada.toLowerCase())
+                    );
+                }
                 
                 if (infoRota) {
                     const capacidade = parseInt(infoRota.CAPACIDADE) || 0;
@@ -748,7 +869,7 @@
                     
                     html += `
                         <div class="mb-2 p-2 border rounded">
-                            <strong>${rotaBase}</strong> (${infoRota.TURNO || 'N/A'})
+                            <strong>${infoRota.ROTA || rotaBase}</strong> (${infoRota.TURNO || 'N/A'})
                             <p>Capacidade: ${capacidade} | Alocados: ${alocados}</p>
                             <div class="route-progress">
                                 <div class="route-progress-bar ${corBarra}" style="width: ${percentual}%"></div>
@@ -786,9 +907,20 @@
                 // Limpar layers anteriores
                 limparMapa();
                 
+                // Determinar a pasta baseada na direção selecionada
+                let pasta = turno;
+                if (direcaoSelecionada === 'VOLTA') {
+                    pasta = 'ADM_VOLTA';
+                    // Verificar se a pasta existe nos dados
+                    if (!turnosData[pasta]) {
+                        // Se não existir, usar a pasta padrão mas filtrar por VOLTA
+                        pasta = turno;
+                    }
+                }
+                
                 // Carregar e exibir KMLs selecionados
                 for (const rota of rotasSelecionadas) {
-                    await carregarKML(turno, rota);
+                    await carregarKML(pasta, rota);
                 }
                 
                 // Carregar e exibir colaboradores
@@ -802,7 +934,7 @@
                     map.fitBounds(colaboradoresBounds, { padding: [50, 50] });
                 }
                 
-                mostrarStatus(`Mapa gerado com sucesso: ${rotasSelecionadas.length} rota(s) carregada(s)`);
+                mostrarStatus(`Mapa gerado com sucesso: ${rotasSelecionadas.length} rota(s) ${direcaoSelecionada} carregada(s)`);
             } catch (error) {
                 console.error('Erro ao gerar mapa:', error);
                 mostrarStatus('Erro ao gerar mapa. Verifique o console para detalhes.', 'error');
@@ -812,127 +944,159 @@
         }
 
         // Função para carregar e exibir KML do GitHub
-        async function carregarKML(turno, rota) {
+        async function carregarKML(pasta, rota) {
             try {
-                const kmlUrl = `${BASE_URL}${encodeURIComponent(turno)}/${encodeURIComponent(rota)}`;
+                const kmlUrl = `${BASE_URL}${encodeURIComponent(pasta)}/${encodeURIComponent(rota)}`;
                 const response = await fetch(kmlUrl);
                 
                 if (!response.ok) {
+                    // Se não encontrar na pasta específica, tentar na pasta padrão
+                    if (pasta === 'ADM_VOLTA') {
+                        const kmlUrlAlternativo = `${BASE_URL}${encodeURIComponent(turnoSelect.value)}/${encodeURIComponent(rota)}`;
+                        const responseAlternativo = await fetch(kmlUrlAlternativo);
+                        
+                        if (responseAlternativo.ok) {
+                            return await processarKML(await responseAlternativo.text(), rota);
+                        }
+                    }
                     throw new Error(`Erro ao carregar KML: ${response.status}`);
                 }
                 
                 const kmlText = await response.text();
-                
-                // Criar um parser para processar o KML
-                const parser = new DOMParser();
-                const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
-                
-                // Namespace KML
-                const ns = {kml: 'http://www.opengis.net/kml/2.2'};
-                
-                // Extrair Placemarks
-                const placemarks = kmlDoc.getElementsByTagName('Placemark');
-                const bounds = [];
-                pontosKML = []; // Resetar pontos KML
-                rotasCarregadas.push(rota); // Armazenar rota carregada
-                
-                // Encontrar informações da rota no arquivo ROTAS.csv
-                const rotaBase = rota.replace('.kml', '').replace('.KML', '').trim();
-                const infoRota = rotasData.find(r => 
-                    String(r.ROTA || '').trim() === rotaBase
-                );
-                
-                // Preparar conteúdo do popup
-                let popupContent = `<strong>${rotaBase}</strong>`;
-                if (infoRota) {
-                    const capacidade = parseInt(infoRota.CAPACIDADE) || 0;
-                    const alocados = parseInt(infoRota.ALOCADOS) || 0;
-                    const percentual = capacidade > 0 ? Math.round((alocados / capacidade) * 100) : 0;
-                    
-                    popupContent += `<br>Turno: ${infoRota.TURNO || 'N/A'}`;
-                    popupContent += `<br>Capacidade: ${capacidade}`;
-                    popupContent += `<br>Alocados: ${alocados}`;
-                    popupContent += `<br>Ocupação: ${percentual}%`;
-                } else {
-                    popupContent += `<br>Informações não encontradas no arquivo ROTAS.csv`;
-                }
-                
-                for (const placemark of placemarks) {
-                    // Processar LineStrings (rotas)
-                    const lineStrings = placemark.getElementsByTagName('LineString');
-                    for (const lineString of lineStrings) {
-                        const coordsElement = lineString.getElementsByTagName('coordinates')[0];
-                        if (coordsElement) {
-                            const coordsText = coordsElement.textContent.trim();
-                            const coords = coordsText.split(/\s+/).map(coord => {
-                                const [lon, lat] = coord.split(',').map(Number);
-                                return [lat, lon];
-                            });
-                            
-                            // Adicionar polyline ao mapa
-                            const polyline = L.polyline(coords, {
-                                color: getRandomColor(rotaBase), 
-                                weight: 4
-                            }).addTo(map);
-                            
-                            // Adicionar popup com informações da rota
-                            polyline.bindPopup(popupContent);
-                            
-                            // Adicionar tooltip ao passar o mouse
-                            polyline.bindTooltip(rotaBase, {
-                                permanent: false,
-                                direction: 'top',
-                                offset: [0, -5]
-                            });
-                            
-                            // Armazenar a polyline para referência futura
-                            routePolylines[rotaBase] = polyline;
-                            
-                            currentLayers.push(polyline);
-                            
-                            // Adicionar coordenadas aos bounds
-                            coords.forEach(coord => bounds.push(coord));
-                        }
-                    }
-                    
-                    // Processar Points (pontos de interesse)
-                    const points = placemark.getElementsByTagName('Point');
-                    for (const point of points) {
-                        const coordsElement = point.getElementsByTagName('coordinates')[0];
-                        if (coordsElement) {
-                            const coordsText = coordsElement.textContent.trim();
-                            const [lon, lat] = coordsText.split(',').map(Number);
-                            
-                            // Adicionar marcador ao mapa
-                            const marker = L.marker([lat, lon]).addTo(map);
-                            
-                            // Adicionar popup com informações da rota
-                            marker.bindPopup(popupContent);
-                            
-                            currentLayers.push(marker);
-                            
-                            // Adicionar coordenada aos bounds
-                            bounds.push([lat, lon]);
-                            
-                            // Armazenar ponto KML para verificação de perímetro
-                            pontosKML.push({
-                                lat: lat,
-                                lon: lon,
-                                rota: rota
-                            });
-                        }
-                    }
-                }
-                
-                // Ajustar visualização do mapa para mostrar toda a rota
-                if (bounds.length > 0) {
-                    map.fitBounds(bounds, {padding: [20, 20]});
-                }
+                return await processarKML(kmlText, rota);
                 
             } catch (error) {
                 console.error('Erro ao processar KML:', error);
                 throw new Error('Falha ao carregar o arquivo KML');
             }
+        }
+
+        // Função para processar o conteúdo KML
+        async function processarKML(kmlText, rota) {
+            // Criar um parser para processar o KML
+            const parser = new DOMParser();
+            const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+            
+            // Namespace KML
+            const ns = {kml: 'http://www.opengis.net/kml/2.2'};
+            
+            // Extrair Placemarks
+            const placemarks = kmlDoc.getElementsByTagName('Placemark');
+            const bounds = [];
+            
+            // Encontrar informações da rota no arquivo ROTAS.csv
+            const rotaBase = rota.replace('.kml', '').replace('.KML', '').trim();
+            
+            // Primeiro, tentar encontrar exatamente pelo nome
+            let infoRota = rotasData.find(r => 
+                String(r.ROTA || '').trim() === rotaBase
+            );
+            
+            // Se não encontrar, tentar encontrar por correspondência parcial
+            if (!infoRota) {
+                infoRota = rotasData.find(r => 
+                    String(r.ROTA || '').trim().includes(rotaBase) ||
+                    rotaBase.includes(String(r.ROTA || '').trim())
+                );
+            }
+            
+            // Se ainda não encontrar, tentar adicionar a direção (IDA/VOLTA)
+            if (!infoRota) {
+                infoRota = rotasData.find(r => 
+                    String(r.ROTA || '').trim().includes(rotaBase + ' ' + direcaoSelecionada) ||
+                    String(r.ROTA || '').trim().includes(rotaBase + ' ' + direcaoSelecionada.toLowerCase())
+                );
+            }
+            
+            // Preparar conteúdo do popup
+            let popupContent = `<strong>${infoRota ? infoRota.ROTA : rotaBase}</strong>`;
+            if (infoRota) {
+                const capacidade = parseInt(infoRota.CAPACIDADE) || 0;
+                const alocados = parseInt(infoRota.ALOCADOS) || 0;
+                const percentual = capacidade > 0 ? Math.round((alocados / capacidade) * 100) : 0;
+                
+                popupContent += `<br>Turno: ${infoRota.TURNO || 'N/A'}`;
+                popupContent += `<br>Capacidade: ${capacidade}`;
+                popupContent += `<br>Alocados: ${alocados}`;
+                popupContent += `<br>Ocupação: ${percentual}%`;
+            } else {
+                popupContent += `<br>Informações não encontradas no arquivo ROTAS.csv`;
+            }
+            
+            for (const placemark of placemarks) {
+                // Processar LineStrings (rotas)
+                const lineStrings = placemark.getElementsByTagName('LineString');
+                for (const lineString of lineStrings) {
+                    const coordsElement = lineString.getElementsByTagName('coordinates')[0];
+                    if (coordsElement) {
+                        const coordsText = coordsElement.textContent.trim();
+                        const coords = coordsText.split(/\s+/).map(coord => {
+                            const [lon, lat] = coord.split(',').map(Number);
+                            return [lat, lon];
+                        });
+                        
+                        // Adicionar polyline ao mapa
+                        const polyline = L.polyline(coords, {
+                            color: getRandomColor(rotaBase), 
+                            weight: 4
+                        }).addTo(map);
+                        
+                        // Adicionar popup com informações da rota
+                        polyline.bindPopup(popupContent);
+                        
+                        // Adicionar tooltip ao passar o mouse
+                        polyline.bindTooltip(rotaBase, {
+                            permanent: false,
+                            direction: 'top',
+                            offset: [0, -5]
+                        });
+                        
+                        // Armazenar a polyline para referência futura
+                        routePolylines[rotaBase] = polyline;
+                        
+                        currentLayers.push(polyline);
+                        
+                        // Adicionar coordenadas aos bounds
+                        coords.forEach(coord => bounds.push(coord));
+                    }
+                }
+                
+                // Processar Points (pontos de interesse)
+                const points = placemark.getElementsByTagName('Point');
+                for (const point of points) {
+                    const coordsElement = point.getElementsByTagName('coordinates')[0];
+                    if (coordsElement) {
+                        const coordsText = coordsElement.textContent.trim();
+                        const [lon, lat] = coordsText.split(',').map(Number);
+                        
+                        // Adicionar marcador ao mapa
+                        const marker = L.marker([lat, lon]).addTo(map);
+                        
+                        // Adicionar popup com informações da rota
+                        marker.bindPopup(popupContent);
+                        
+                        currentLayers.push(marker);
+                        
+                        // Adicionar coordenada aos bounds
+                        bounds.push([lat, lon]);
+                        
+                        // Armazenar ponto KML para verificação de perímetro
+                        pontosKML.push({
+                            lat: lat,
+                            lon: lon,
+                            rota: rota
+                        });
+                    }
+                }
+            }
+            
+            // Ajustar visualização do mapa para mostrar toda a rota
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, {padding: [20, 20]});
+            }
+            
+            // Adicionar à lista de rotas carregadas
+            rotasCarregadas.push(rota);
         }
 
         // Função para gerar uma cor aleatória baseada no nome da rota
@@ -989,7 +1153,13 @@
                 // Filtrar colaboradores pelas rotas selecionadas
                 const colaboradoresFiltrados = colaboradoresData.filter(colab => {
                     const colabRota = String(colab.ROTA || '').trim();
-                    return rotasBase.includes(colabRota);
+                    
+                    // Verificar se a rota do colaborador corresponde a qualquer uma das rotas selecionadas
+                    return rotasBase.some(rotaBase => 
+                        colabRota === rotaBase || 
+                        colabRota.includes(rotaBase) || 
+                        rotaBase.includes(colabRota)
+                    );
                 });
                 
                 if (colaboradoresFiltrados.length === 0) {
@@ -1039,9 +1209,19 @@
                     
                     // Encontrar informações da rota no arquivo ROTAS.csv
                     const colabRota = String(colab.ROTA || '').trim();
-                    const infoRota = rotasData.find(r => 
+                    
+                    // Primeiro, tentar encontrar exatamente pelo nome
+                    let infoRota = rotasData.find(r => 
                         String(r.ROTA || '').trim() === colabRota
                     );
+                    
+                    // Se não encontrar, tentar encontrar por correspondência parcial
+                    if (!infoRota) {
+                        infoRota = rotasData.find(r => 
+                            String(r.ROTA || '').trim().includes(colabRota) ||
+                            colabRota.includes(String(r.ROTA || '').trim())
+                        );
+                    }
                     
                     // Popup com informações do colaborador
                     const nome = colab.COLABORADOR || 'N/A';
@@ -1248,13 +1428,24 @@
                 // Limpar layers anteriores, mas manter os colaboradores
                 limparMapaExcetoColaboradores();
                 
+                // Determinar a pasta baseada na direção selecionada
+                let pasta = turno;
+                if (direcaoPerimetroSelecionada === 'VOLTA') {
+                    pasta = 'ADM_VOLTA';
+                    // Verificar se a pasta existe nos dados
+                    if (!turnosData[pasta]) {
+                        // Se não existir, usar a pasta padrão mas filtrar por VOLTA
+                        pasta = turno;
+                    }
+                }
+                
                 // Carregar KMLs do turno selecionado
-                const rotas = verificarTodasRotas ? turnosData[turno] || [] : [rotaEspecifica];
+                const rotas = verificarTodasRotas ? turnosData[pasta] || [] : [rotaEspecifica];
                 pontosKML = []; // Resetar pontos KML
                 rotasCarregadas = []; // Resetar rotas carregadas
                 
                 for (const rota of rotas) {
-                    await carregarKMLPontosApenas(turno, rota);
+                    await carregarKMLPontosApenas(pasta, rota);
                     rotasCarregadas.push(rota);
                 }
                 
@@ -1284,65 +1475,80 @@
         }
 
         // Função para carregar apenas os pontos dos KMLs (sem exibir no mapa)
-        async function carregarKMLPontosApenas(turno, rota) {
+        async function carregarKMLPontosApenas(pasta, rota) {
             try {
-                const kmlUrl = `${BASE_URL}${encodeURIComponent(turno)}/${encodeURIComponent(rota)}`;
+                const kmlUrl = `${BASE_URL}${encodeURIComponent(pasta)}/${encodeURIComponent(rota)}`;
                 const response = await fetch(kmlUrl);
                 
                 if (!response.ok) {
+                    // Se não encontrar na pasta específica, tentar na pasta padrão
+                    if (pasta === 'ADM_VOLTA') {
+                        const kmlUrlAlternativo = `${BASE_URL}${encodeURIComponent(turnoPerimetroSelect.value)}/${encodeURIComponent(rota)}`;
+                        const responseAlternativo = await fetch(kmlUrlAlternativo);
+                        
+                        if (responseAlternativo.ok) {
+                            const kmlText = await responseAlternativo.text();
+                            await processarKMLPontos(kmlText, rota);
+                            return;
+                        }
+                    }
                     throw new Error(`Erro ao carregar KML: ${response.status}`);
                 }
                 
                 const kmlText = await response.text();
-                
-                // Criar um parser para processar o KML
-                const parser = new DOMParser();
-                const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
-                
-                // Extrair LineStrings (rotas) e Points (pontos de interesse)
-                const placemarks = kmlDoc.getElementsByTagName('Placemark');
-                
-                for (const placemark of placemarks) {
-                    // Processar LineStrings (rotas)
-                    const lineStrings = placemark.getElementsByTagName('LineString');
-                    for (const lineString of lineStrings) {
-                        const coordsElement = lineString.getElementsByTagName('coordinates')[0];
-                        if (coordsElement) {
-                            const coordsText = coordsElement.textContent.trim();
-                            const coords = coordsText.split(/\s+/).map(coord => {
-                                const [lon, lat] = coord.split(',').map(Number);
-                                return {lat: lat, lon: lon, rota: rota};
-                            });
-                            
-                            // Adicionar pontos da rota ao array
-                            pontosKML = pontosKML.concat(coords);
-                        }
-                    }
-                    
-                    // Processar Points (pontos de interesse)
-                    const points = placemark.getElementsByTagName('Point');
-                    for (const point of points) {
-                        const coordsElement = point.getElementsByTagName('coordinates')[0];
-                        if (coordsElement) {
-                            const coordsText = coordsElement.textContent.trim();
-                            const [lon, lat] = coordsText.split(',').map(Number);
-                            
-                            // Armazenar ponto KML para verificação de perímetro
-                            pontosKML.push({
-                                lat: lat,
-                                lon: lon,
-                                rota: rota
-                            });
-                        }
-                    }
-                }
-                
-                // Adicionar também a rota visualmente no mapa
-                await carregarKML(turno, rota);
+                await processarKMLPontos(kmlText, rota);
                 
             } catch (error) {
                 console.error('Erro ao processar KML:', error);
             }
+        }
+
+        // Função para processar pontos KML
+        async function processarKMLPontos(kmlText, rota) {
+            // Criar um parser para processar o KML
+            const parser = new DOMParser();
+            const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+            
+            // Extrair LineStrings (rotas) e Points (pontos de interesse)
+            const placemarks = kmlDoc.getElementsByTagName('Placemark');
+            
+            for (const placemark of placemarks) {
+                // Processar LineStrings (rotas)
+                const lineStrings = placemark.getElementsByTagName('LineString');
+                for (const lineString of lineStrings) {
+                    const coordsElement = lineString.getElementsByTagName('coordinates')[0];
+                    if (coordsElement) {
+                        const coordsText = coordsElement.textContent.trim();
+                        const coords = coordsText.split(/\s+/).map(coord => {
+                            const [lon, lat] = coord.split(',').map(Number);
+                            return {lat: lat, lon: lon, rota: rota};
+                        });
+                        
+                        // Adicionar pontos da rota ao array
+                        pontosKML = pontosKML.concat(coords);
+                    }
+                }
+                
+                // Processar Points (pontos de interesse)
+                const points = placemark.getElementsByTagName('Point');
+                for (const point of points) {
+                    const coordsElement = point.getElementsByTagName('coordinates')[0];
+                    if (coordsElement) {
+                        const coordsText = coordsElement.textContent.trim();
+                        const [lon, lat] = coordsText.split(',').map(Number);
+                        
+                        // Armazenar ponto KML para verificação de perímetro
+                        pontosKML.push({
+                            lat: lat,
+                            lon: lon,
+                            rota: rota
+                        });
+                    }
+                }
+            }
+            
+            // Adicionar também a rota visualmente no mapa
+            await carregarKML(pasta, rota);
         }
 
         // Função para desenhar círculos de perímetro
@@ -1369,7 +1575,7 @@
             });
         }
 
-        // Função para verificar quais colaboradores estão fuera do perímetro
+        // Função para verificar quais colaboradores están fuera del perímetro
         function verificarColaboradoresForaPerimetro(raio, rotaEspecifica) {
             const colaboradoresForaPerimetro = [];
             
@@ -1381,7 +1587,11 @@
             // Filtrar colaboradores pelas rotas carregadas
             const colaboradoresParaVerificar = colaboradoresData.filter(colab => {
                 const colabRota = String(colab.ROTA || '').trim();
-                return rotasCarregadasBase.includes(colabRota);
+                return rotasCarregadasBase.some(rotaBase => 
+                    colabRota === rotaBase || 
+                    colabRota.includes(rotaBase) || 
+                    rotaBase.includes(colabRota)
+                );
             });
             
             colaboradoresParaVerificar.forEach(colab => {
@@ -1389,23 +1599,25 @@
                 const lon = converterCoordenada(colab.LONG || 0);
                 const colabRota = String(colab.ROTA || '').trim();
                 
-                // Verificar se as coordenadas são válidas
+                // Verificar si las coordenadas son válidas
                 if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
                     return;
                 }
                 
-                // Se o colaborador está na empresa, não está fuera do perímetro
+                // Si el colaborador está en la empresa, no está fuera del perímetro
                 if (estaDentroDaEmpresa(lat, lon)) {
                     return;
                 }
                 
-                // Filtrar pontos KML apenas pela rota do colaborador
+                // Filtrar puntos KML apenas pela rota do colaborador
                 const pontosParaVerificar = pontosKML.filter(ponto => {
                     const pontoRotaBase = ponto.rota.replace('.kml', '').replace('.KML', '').trim();
-                    return pontoRotaBase === colabRota;
+                    return colabRota === pontoRotaBase || 
+                           colabRota.includes(pontoRotaBase) || 
+                           pontoRotaBase.includes(colabRota);
                 });
                 
-                // Verificar se o colaborador está fuera de todos os perímetros da SUA rota
+                // Verificar si el colaborador está fuera de todos los perímetros de SUA rota
                 if (pontosParaVerificar.length > 0 && !estaDentroDoPerimetro(lat, lon, pontosParaVerificar, raio)) {
                     colaboradoresForaPerimetro.push(colab);
                 }
@@ -1414,7 +1626,7 @@
             return colaboradoresForaPerimetro;
         }
 
-        // Função para destacar colaboradores fuera do perímetro
+        // Função para destacar colaboradores fuera del perímetro
         function destacarColaboradoresForaPerimetro(colaboradoresForaPerimetro) {
             // Remover cluster atual
             if (markerCluster) {
@@ -1429,7 +1641,11 @@
             // Filtrar colaboradores pelas rotas carregadas
             const colaboradoresParaExibir = colaboradoresData.filter(colab => {
                 const colabRota = String(colab.ROTA || '').trim();
-                return rotasCarregadasBase.includes(colabRota);
+                return rotasCarregadasBase.some(rotaBase => 
+                    colabRota === rotaBase || 
+                    colabRota.includes(rotaBase) || 
+                    rotaBase.includes(colabRota)
+                );
             });
             
             // Criar novo cluster
@@ -1459,7 +1675,9 @@
                     const colabRota = String(colab.ROTA || '').trim();
                     const pontosParaVerificar = pontosKML.filter(ponto => {
                         const pontoRotaBase = ponto.rota.replace('.kml', '').replace('.KML', '').trim();
-                        return pontoRotaBase === colabRota;
+                        return colabRota === pontoRotaBase || 
+                               colabRota.includes(pontoRotaBase) || 
+                               pontoRotaBase.includes(colabRota);
                     });
                     
                     estaFora = pontosParaVerificar.length > 0 && !estaDentroDoPerimetro(lat, lon, pontosParaVerificar, parseInt(raioInput.value) || 314);
@@ -1505,7 +1723,7 @@
             map.addLayer(markerCluster);
         }
 
-        // Função para exibir relatório de colaboradores fuera do perímetro
+        // Função para exibir relatório de colaboradores fuera del perímetro
         function exibirRelatorioPerimetro(colaboradoresForaPerimetro) {
             if (colaboradoresForaPerimetro.length === 0) {
                 relatorioPerimetro.innerHTML = '<p class="text-center text-success"><i class="fas fa-check-circle"></i> Todos os colaboradores estão dentro do perímetro!</p>';
